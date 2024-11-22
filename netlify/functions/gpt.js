@@ -9,6 +9,9 @@ exports.handler = async function(event) {
     }
 
     const requestBody = JSON.parse(event.body);
+    
+    // Add JSON requirement to the prompt
+    const modifiedPrompt = requestBody.prompt + " Provide your analysis in JSON format.";
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -25,7 +28,7 @@ exports.handler = async function(event) {
             content: [
               {
                 type: "text",
-                text: requestBody.prompt
+                text: modifiedPrompt
               },
               {
                 type: "image_url",
