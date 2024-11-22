@@ -9,16 +9,12 @@ exports.handler = async function(event) {
     }
 
     const requestBody = JSON.parse(event.body);
-    
-    // Add JSON requirement to the prompt
-    const modifiedPrompt = requestBody.prompt + " Provide your analysis in JSON format.";
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'OpenAI-Beta': 'assistants=v1'
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -28,7 +24,7 @@ exports.handler = async function(event) {
             content: [
               {
                 type: "text",
-                text: modifiedPrompt
+                text: requestBody.prompt
               },
               {
                 type: "image_url",
@@ -40,31 +36,42 @@ exports.handler = async function(event) {
           }
         ],
         max_tokens: 500,
-        temperature: 0.3,
-        response_format: { type: "json_object" }
+        temperature: 0.3
       })
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        statusCode: response.status,
-        body: JSON.stringify(error)
-      };
-    }
-
     const data = await response.json();
+    
+    // Return just the content part that script.js is expecting
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: data.choices[0].message.content
     };
 
   } catch (error) {
     console.error('Function error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({
+        analysis: ["Error analyzing image: " + error.message],
+        technicalDetails: {
+          rangeOfMotion: "Error occurred",
+          compensation: "Error occurred",
+          stability: "Error occurred",
+          implications: "Error occurred"
+        },
+        mobilityAge: 0,
+        exercises: [{
+          name: "Error occurred",
+          description: "Please try again",
+          steps: ["Error occurred"],
+          frequency: "N/A",
+          tips: ["Please try again"],
+          progression: "N/A",
+          regressions: "N/A"
+        }]
+      })
     };
   }
 };
