@@ -116,36 +116,63 @@ async function analyzeImageWithAI(imageBase64) {
             })
         });
 
-        if (!response.ok) {
+       if (!response.ok) {
             const errorData = await response.json();
             console.error('API Error:', errorData);
             throw new Error(`API error: ${errorData.error?.message || response.statusText}`);
         }
-        
-const data = await response.json();
-    console.log('API Response:', data);
 
-    const resultText = data.choices[0].message.content;
-    console.log('Result text:', resultText);
+        const data = await response.json();
+        console.log('API Response:', data);
 
-    try {
-        // Try to parse the response directly first
-        const parsedResult = JSON.parse(resultText.trim());
-        console.log('Parsed result:', parsedResult); // Add this line
-        return parsedResult;
-    } catch (initialError) {
-        console.error('Initial parsing error:', initialError); // Add this line
-        // If direct parsing fails, try to extract JSON from markdown
+        const resultText = data.choices[0].message.content;
+        console.log('Result text:', resultText);
+
         try {
-            const jsonMatch = resultText.match(/```json\n?(.*?)\n?```/s) || resultText.match(/{[\s\S]*}/);
-            if (jsonMatch) {
-                const parsedMatch = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                console.log('Parsed from markdown:', parsedMatch); // Add this line
-                return parsedMatch;
+            // Try to parse the response directly first
+            const parsedResult = JSON.parse(resultText.trim());
+            console.log('Parsed result:', parsedResult);
+            return parsedResult;
+        } catch (initialError) {
+            console.error('Initial parsing error:', initialError);
+            // If direct parsing fails, try to extract JSON from markdown
+            try {
+                const jsonMatch = resultText.match(/```json\n?(.*?)\n?```/s) || resultText.match(/{[\s\S]*}/);
+                if (jsonMatch) {
+                    const parsedMatch = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                    console.log('Parsed from markdown:', parsedMatch);
+                    return parsedMatch;
+                }
+                throw new Error('No valid JSON found in response');
+            } catch (error) {
+                console.error('Parsing error:', error);
+                return {
+                    analysis: [
+                        "Unable to analyze image properly",
+                        "Please ensure good lighting and clear view",
+                        "Try taking the photo again"
+                    ],
+                    technicalDetails: {
+                        rangeOfMotion: "Assessment unavailable",
+                        compensation: "Unable to determine",
+                        stability: "Unable to assess",
+                        implications: "Please retake photo for accurate assessment"
+                    },
+                    mobilityAge: assessmentData.userAge,
+                    exercises: [
+                        {
+                            name: "Basic Mobility Exercise",
+                            description: "General mobility movement",
+                            steps: ["Start position", "Execute movement", "Return to start"],
+                            frequency: "Daily",
+                            tips: ["Move slowly", "Maintain form"],
+                            progression: "Increase repetitions",
+                            regressions: "Reduce range of motion"
+                        }
+                    ]
+                };
             }
-            throw new Error('No valid JSON found in response');
-        } catch (error) {
-            console.error('Parsing error:', error);
+        }
     } catch (error) {
         console.error('Analysis error:', error);
         throw error;
