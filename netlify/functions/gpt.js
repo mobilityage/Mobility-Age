@@ -4,49 +4,15 @@ exports.handler = async function(event) {
   const OPENAI_API_KEY = process.env.GPT_API_KEY;
   
   try {
-    console.log('Function called with method:', event.httpMethod);
-    console.log('Event body:', event.body);
-
     if (event.httpMethod !== 'POST') {
-      return { 
-        statusCode: 405, 
-        body: JSON.stringify({
-          error: 'Method not allowed',
-          method: event.httpMethod,
-          allowedMethod: 'POST'
-        })
-      };
+      return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     const requestBody = JSON.parse(event.body);
     
-    // Log to help debug
-    console.log('Image data received:', requestBody.imageData ? 'Yes (length: ' + requestBody.imageData.length + ')' : 'No');
-    console.log('Prompt received:', requestBody.prompt ? 'Yes' : 'No');
-
-    const openAIRequestBody = {
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: requestBody.prompt
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${requestBody.imageData}`
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 3000
-    };
-
-    console.log('Sending request to OpenAI...');
+    // Set a timeout for the OpenAI request
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 9000); // 9 seconds
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -54,20 +20,33 @@ exports.handler = async function(event) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
-      body: JSON.stringify(openAIRequestBody)
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: requestBody.prompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${requestBody.imageData}`
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1000 // Reduced from 3000 to help with timeout
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeout);
+
     const data = await response.json();
-
-    console.log('OpenAI response status:', response.status);
-
-    if (!response.ok) {
-      console.error('OpenAI API Error:', data);
-      return {
-        statusCode: response.status,
-        body: JSON.stringify(data)
-      };
-    }
 
     return {
       statusCode: 200,
@@ -77,12 +56,10 @@ exports.handler = async function(event) {
       body: JSON.stringify(data)
     };
   } catch (error) {
-    console.error('Function error:', error);
     return {
-      statusCode: 500,
+      statusCode: error.name === 'AbortError' ? 504 : 500,
       body: JSON.stringify({ 
-        error: error.message,
-        stack: error.stack 
+        error: error.name === 'AbortError' ? 'Request timed out' : error.message
       })
     };
   }
