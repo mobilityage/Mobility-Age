@@ -174,7 +174,7 @@ async function analyzeImageWithAI(imageBase64) {
         throw error;
     }
 }
-}function showError(message) {
+function showError(message) {
     document.getElementById('analysisResult').innerHTML = `<p style="color: red;">${message}</p>`;
     document.getElementById('exerciseRecommendations').innerHTML = 
         '<div class="exercise-item">Please try again</div>';
