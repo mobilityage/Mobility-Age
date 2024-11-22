@@ -77,15 +77,8 @@ async function analyzeImageWithAI(imageBase64) {
         const base64Data = imageBase64.split(',')[1];
         const currentPose = assessmentData.poses[assessmentData.currentPose].name;
 
-        const requestBody = {
-            model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "user",
-                    content: [
-                        { 
-                            type: "text", 
-                            text: `As an expert physiotherapist with 20 years experience, analyze this ${currentPose} pose comparing to the ideal form speaking to the user in the first person. The person's actual age is ${assessmentData.userAge}. Analyze their mobility age using these specific criteria:
+        // Prepare the prompt
+        const prompt = `As an expert physiotherapist with 20 years experience, analyze this ${currentPose} pose comparing to the ideal form speaking to the user in the first person. The person's actual age is ${assessmentData.userAge}. Analyze their mobility age using these specific criteria:
 
 1. Alignment: Check joint alignment and posture against ideal form
 - Perfect alignment = -5 years
@@ -110,61 +103,17 @@ async function analyzeImageWithAI(imageBase64) {
 - Excellent control = -5 years
 - Good control = +0 years
 - Fair control = +5-10 years
-- Poor control = +10-15 years
+- Poor control = +10-15 years`;
 
-Calculate final mobility age by:
-1. Start with actual age
-2. Apply adjustments from each category
-3. Average the results
-4. Round to nearest whole number
-5. Ensure result stays between 18-90
-
-Return a JSON object with:
-{
-    "analysis": [
-        "detailed observation about alignment",
-        "detailed observation about ROM",
-        "detailed observation about compensations and control"
-    ],
-    "technicalDetails": {
-        "rangeOfMotion": "specific ROM measurements and comparisons to normal ranges",
-        "compensation": "specific compensatory movements observed",
-        "stability": "detailed stability assessment with specific observations",
-        "implications": "specific functional implications based on findings"
-    },
-    "mobilityAge": (number calculated using above criteria),
-    "exercises": [
-        {
-            "name": "exercise name targeting main limitation",
-            "description": "detailed description with biomechanical focus",
-            "steps": ["detailed step1", "detailed step2", "detailed step3"],
-            "frequency": "specific frequency with progressions",
-            "tips": ["biomechanical tip1", "safety tip2"],
-            "progression": "specific progression steps",
-            "regressions": "specific modification options"
-        }
-    ]
-}`
-                        },
-                        {
-                            type: "image_url",
-                            image_url: {
-                                url: `data:image/jpeg;base64,${base64Data}`
-                            }
-                        }
-                    ]
-                }
-            ],
-            temperature: 0.7
-        };
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetch('/.netlify/functions/gpt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer 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`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify({
+                imageData: base64Data,
+                prompt: prompt
+            })
         });
 
         if (!response.ok) {
@@ -224,6 +173,7 @@ Return a JSON object with:
         console.error('Analysis error:', error);
         throw error;
     }
+}
 }function showError(message) {
     document.getElementById('analysisResult').innerHTML = `<p style="color: red;">${message}</p>`;
     document.getElementById('exerciseRecommendations').innerHTML = 
