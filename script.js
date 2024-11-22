@@ -162,7 +162,7 @@ Return a JSON object with:
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer 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`
+                'Authorization': `Bearer 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`
             },
             body: JSON.stringify(requestBody)
         });
