@@ -9,16 +9,13 @@ exports.handler = async function(event) {
     }
 
     const requestBody = JSON.parse(event.body);
-    
-    // Set a timeout for the OpenAI request
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 9000); // 9 seconds
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'assistants=v1'
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
@@ -39,28 +36,32 @@ exports.handler = async function(event) {
             ]
           }
         ],
-        max_tokens: 1000 // Reduced from 3000 to help with timeout
-      }),
-      signal: controller.signal
+        max_tokens: 500,
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      })
     });
 
-    clearTimeout(timeout);
+    if (!response.ok) {
+      const error = await response.json();
+      return {
+        statusCode: response.status,
+        body: JSON.stringify(error)
+      };
+    }
 
     const data = await response.json();
-
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     };
+
   } catch (error) {
+    console.error('Function error:', error);
     return {
-      statusCode: error.name === 'AbortError' ? 504 : 500,
-      body: JSON.stringify({ 
-        error: error.name === 'AbortError' ? 'Request timed out' : error.message
-      })
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message })
     };
   }
 };
