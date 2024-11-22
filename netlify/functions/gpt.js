@@ -4,17 +4,23 @@ exports.handler = async function(event) {
   const OPENAI_API_KEY = process.env.GPT_API_KEY;
   
   try {
-    // Only allow POST requests
     if (event.httpMethod !== 'POST') {
       return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
     const requestBody = JSON.parse(event.body);
-    const base64Data = requestBody.imageData;
+    
+    // Log to help debug (these will appear in your Netlify function logs)
+    console.log('Image data length:', requestBody.imageData.length);
+    console.log('Prompt length:', requestBody.prompt.length);
 
-    // Construct the OpenAI request body
+    // Make sure the image data exists and is properly formatted
+    if (!requestBody.imageData) {
+      throw new Error('No image data provided');
+    }
+
     const openAIRequestBody = {
-      model: "gpt-4o-mini",
+      model: "gpt-4-vision-preview",
       messages: [
         {
           role: "user",
@@ -26,13 +32,13 @@ exports.handler = async function(event) {
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Data}`
+                url: `data:image/jpeg;base64,${requestBody.imageData}`
               }
             }
           ]
         }
       ],
-      temperature: 0.7
+      max_tokens: 3000
     };
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -45,7 +51,15 @@ exports.handler = async function(event) {
     });
 
     const data = await response.json();
-    
+
+    if (!response.ok) {
+      console.error('OpenAI API Error:', data);
+      return {
+        statusCode: response.status,
+        body: JSON.stringify(data)
+      };
+    }
+
     return {
       statusCode: 200,
       headers: {
@@ -54,6 +68,7 @@ exports.handler = async function(event) {
       body: JSON.stringify(data)
     };
   } catch (error) {
+    console.error('Function error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })
