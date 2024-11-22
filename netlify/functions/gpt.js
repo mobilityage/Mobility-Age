@@ -4,20 +4,25 @@ exports.handler = async function(event) {
   const OPENAI_API_KEY = process.env.GPT_API_KEY;
   
   try {
+    console.log('Function called with method:', event.httpMethod);
+    console.log('Event body:', event.body);
+
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method Not Allowed' };
+      return { 
+        statusCode: 405, 
+        body: JSON.stringify({
+          error: 'Method not allowed',
+          method: event.httpMethod,
+          allowedMethod: 'POST'
+        })
+      };
     }
 
     const requestBody = JSON.parse(event.body);
     
-    // Log to help debug (these will appear in your Netlify function logs)
-    console.log('Image data length:', requestBody.imageData.length);
-    console.log('Prompt length:', requestBody.prompt.length);
-
-    // Make sure the image data exists and is properly formatted
-    if (!requestBody.imageData) {
-      throw new Error('No image data provided');
-    }
+    // Log to help debug
+    console.log('Image data received:', requestBody.imageData ? 'Yes (length: ' + requestBody.imageData.length + ')' : 'No');
+    console.log('Prompt received:', requestBody.prompt ? 'Yes' : 'No');
 
     const openAIRequestBody = {
       model: "gpt-4o-mini",
@@ -41,6 +46,8 @@ exports.handler = async function(event) {
       max_tokens: 3000
     };
 
+    console.log('Sending request to OpenAI...');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -51,6 +58,8 @@ exports.handler = async function(event) {
     });
 
     const data = await response.json();
+
+    console.log('OpenAI response status:', response.status);
 
     if (!response.ok) {
       console.error('OpenAI API Error:', data);
@@ -71,7 +80,10 @@ exports.handler = async function(event) {
     console.error('Function error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ 
+        error: error.message,
+        stack: error.stack 
+      })
     };
   }
 };
