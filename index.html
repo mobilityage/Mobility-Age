@@ -33,25 +33,24 @@
         </div>
 
         <div id="poseInstructionSection" style="display: none;">
-            <div class="pose-container" data-pose="apley">
-                <h2>Apley Scratch Test</h2>
+            <div class="pose-container" data-pose="wallAngel">
+                <h2>Wall Angel Test</h2>
                 <div class="pose-instructions">
-                    <img src="/api/placeholder/400/300" alt="Apley Scratch Test Example" class="pose-example">
+                    <img src="/api/placeholder/400/300" alt="Wall Angel Example" class="pose-example">
                     <div class="instruction-text">
                         <h3>Instructions:</h3>
                         <ol>
-                            <li>Stand in a clear area facing sideways to your camera</li>
-                            <li>Reach one arm up and over your shoulder, aiming for your upper back</li>
-                            <li>Reach your other arm behind your lower back, palm facing out</li>
-                            <li>Try to touch or bring your fingers as close as possible</li>
-                            <li>Take a photo in this position</li>
+                            <li>Stand with your back against a wall</li>
+                            <li>Keep your feet about 6 inches from the wall</li>
+                            <li>Press your head, shoulders, and lower back against the wall</li>
+                            <li>Raise your arms up against the wall in a "goal post" position</li>
+                            <li>Use your phone's timer to take a photo</li>
                         </ol>
                         <div class="safety-tips">
                             <h4>Safety Tips:</h4>
                             <ul>
-                                <li>Move slowly and smoothly</li>
-                                <li>Stop if you feel any pinching or pain</li>
-                                <li>Don't force the movement beyond comfort</li>
+                                <li>Keep your core engaged</li>
+                                <li>Don't force the movement</li>
                             </ul>
                         </div>
                     </div>
@@ -164,7 +163,6 @@
                 <div class="mobility-analysis">
                     <h3 id="poseTitle">Analysis</h3>
                     <div id="analysisResult"></div>
-                    <div id="technicalDetails"></div>
                 </div>
                 <div class="recommendations">
                     <h3>Recommended Exercises</h3>
@@ -191,11 +189,36 @@
                     <h3>Key Areas for Improvement</h3>
                     <div id="keyRecommendations"></div>
                 </div>
-                <div id="progressChart"></div>
                 <button id="finalStartOver" class="secondary-button">Start New Assessment</button>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
-</body>
+    <script type="module" src="script.js"></script>
+<script>async function testAPI() {
+    const requestBody = {
+        model: "gpt-4o-mini",
+        messages: [
+            {
+                role: "user",
+                content: "Say this is a test!"
+            }
+        ],
+        temperature: 0.7
+    };
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer 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`
+        },
+        body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+    console.log(data);
+}
+
+// Call it to test
+testAPI().catch(console.error);</script></body>
 </html>
