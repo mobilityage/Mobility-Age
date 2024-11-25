@@ -1,12 +1,7 @@
 {
-"name": "my-web-app",
+"name": "mobility-age-app",
 "version": "1.0.0",
-"description": "A web app using OpenAI API",
-"main": "index.js",
-"scripts": {
-  "start": "node index.js"
-},
 "dependencies": {
-  "node-fetch": "^3.0.0"
+  "axios": "^1.6.0"
 }
 }
