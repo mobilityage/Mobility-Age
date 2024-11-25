@@ -1,5 +1,6 @@
-import { config } from './config.js';
-
+const config = {
+    apiKey: import.meta.env.VITE_OPENAI_API_KEY
+};
 let assessmentData = {
     userAge: null,
     currentPose: 0,
