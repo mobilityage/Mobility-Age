@@ -89,9 +89,6 @@ async function analyzeImageWithAI(imageBase64) {
           if (resultText.includes('
 json')) {
 const jsonText = resultText.split('
-
-unknown
-Copy Code
 json')[1].split('
 ')[0].trim();
 parsedData = JSON.parse(jsonText);
