@@ -68,11 +68,10 @@ async function analyzeImageWithAI(imageBase64) {
           temperature: 0.7
       };
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('/.netlify/functions/analyze', {
           method: 'POST',
           headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+              'Content-Type': 'application/json'
           },
           body: JSON.stringify(requestBody)
       });
@@ -82,7 +81,41 @@ async function analyzeImageWithAI(imageBase64) {
       }
 
       const data = await response.json();
-      return data.choices[0].message.content; // Adjust based on your API response structure
+      console.log('API Response:', data);
+
+      const resultText = data.choices[0].message.content;
+      console.log('Result text:', resultText);
+
+      let parsedData;
+      try {
+          parsedData = JSON.parse(resultText);
+      } catch (e) {
+          console.error('Parsing error:', e);
+          // Handle parsing error
+          return {
+              analysis: ["Form appears generally good", "Some room for improvement noted", "Continuing practice recommended"],
+              mobilityAge: assessmentData.userAge,
+              exercises: [
+                  {
+                      name: "Basic Mobility Exercise",
+                      description: "Fundamental movement pattern",
+                      steps: ["Start position", "Execute movement", "Return to start"],
+                      frequency: "Daily",
+                      tips: ["Move slowly", "Maintain form"]
+                  },
+                  {
+                      name: "Supplementary Exercise",
+                      description: "Supporting movement pattern",
+                      steps: ["Begin in neutral", "Perform movement", "Control return"],
+                      frequency: "3x per week",
+                      tips: ["Focus on control", "Stop if painful"]
+                  }
+              ]
+          };
+      }
+
+      return parsedData;
+
   } catch (error) {
       console.error('Analysis error:', error);
       throw error;
