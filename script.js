@@ -96,7 +96,7 @@ async function analyzeImageWithAI(imageBase64) {
             temperature: 0.7
         };
 
-const apiKey = process.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
