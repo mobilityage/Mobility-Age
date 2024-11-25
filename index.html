@@ -1,198 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobility Age Assessment</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobility Assessment</title>
+  <link rel="stylesheet" href="/public/styles.css" /> <!-- Optional CSS -->
+  <script defer src="/src/script.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Mobility Age Assessment</h1>
-        <p>Discover your body's true mobility age</p>
-        
-        <div id="progressBar" style="display: none;">
-            <div class="progress-steps">
-                <div class="step active">1</div>
-                <div class="step">2</div>
-                <div class="step">3</div>
-                <div class="step">4</div>
-            </div>
-            <p id="poseCount">Pose 1 of 4</p>
-        </div>
+  <header>
+    <h1>Mobility Assessment</h1>
+    <p>Upload images of your poses and receive feedback on your form and mobility.</p>
+  </header>
 
-        <button id="startAssessment">Start Assessment</button>
+  <main>
+    <!-- Current Pose Display -->
+    <section id="pose-section">
+      <h2 id="pose-display">Current Pose: Wall Angel</h2>
+      <p>Follow the instructions for the pose and upload an image for analysis.</p>
+    </section>
 
-        <div id="ageSection" style="display: none;">
-            <h2>Basic Information</h2>
-            <div class="form-group">
-                <label for="age">Your Age:</label>
-                <input type="number" id="age" name="age" required min="18" max="120">
-                <button id="submitAge" class="secondary-button">Continue</button>
-            </div>
-        </div>
+    <!-- Image Upload Section -->
+    <section id="upload-section">
+      <h3>Upload Your Pose Image</h3>
+      <label for="image-upload">Choose an image:</label>
+      <input type="file" id="image-upload" accept="image/*" />
+      <p class="note">Accepted formats: JPG, PNG, GIF</p>
+    </section>
 
-        <div id="poseInstructionSection" style="display: none;">
-            <div class="pose-container" data-pose="wallAngel">
-                <h2>Wall Angel Test</h2>
-                <div class="pose-instructions">
-                    <img src="/api/placeholder/400/300" alt="Wall Angel Example" class="pose-example">
-                    <div class="instruction-text">
-                        <h3>Instructions:</h3>
-                        <ol>
-                            <li>Stand with your back against a wall</li>
-                            <li>Keep your feet about 6 inches from the wall</li>
-                            <li>Press your head, shoulders, and lower back against the wall</li>
-                            <li>Raise your arms up against the wall in a "goal post" position</li>
-                            <li>Use your phone's timer to take a photo</li>
-                        </ol>
-                        <div class="safety-tips">
-                            <h4>Safety Tips:</h4>
-                            <ul>
-                                <li>Keep your core engaged</li>
-                                <li>Don't force the movement</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Navigation Buttons -->
+    <section id="navigation-section">
+      <button id="previous-pose">Previous Pose</button>
+      <button id="next-pose">Next Pose</button>
+    </section>
 
-            <div class="pose-container" data-pose="forwardFold">
-                <h2>Standing Forward Fold</h2>
-                <div class="pose-instructions">
-                    <img src="/api/placeholder/400/300" alt="Forward Fold Example" class="pose-example">
-                    <div class="instruction-text">
-                        <h3>Instructions:</h3>
-                        <ol>
-                            <li>Stand sideways to your phone camera</li>
-                            <li>Set up your phone on a stable surface</li>
-                            <li>Use timer mode on your camera</li>
-                            <li>Bend forward from your hips</li>
-                            <li>Let your arms hang naturally</li>
-                        </ol>
-                        <div class="safety-tips">
-                            <h4>Safety Tips:</h4>
-                            <ul>
-                                <li>Keep your legs straight but not locked</li>
-                                <li>Don't bounce or force the stretch</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Results Section -->
+    <section id="results">
+      <h3>Results</h3>
+      <p>Results will appear here after analysis.</p>
+    </section>
+  </main>
 
-            <div class="pose-container" data-pose="squat">
-                <h2>Deep Squat Assessment</h2>
-                <div class="pose-instructions">
-                    <img src="/api/placeholder/400/300" alt="Deep Squat Example" class="pose-example">
-                    <div class="instruction-text">
-                        <h3>Instructions:</h3>
-                        <ol>
-                            <li>Set up your phone on a stable surface</li>
-                            <li>Position yourself sideways to the camera</li>
-                            <li>Stand with feet shoulder-width apart</li>
-                            <li>Keep arms straight in front</li>
-                            <li>Lower into your deepest comfortable squat</li>
-                        </ol>
-                        <div class="safety-tips">
-                            <h4>Safety Tips:</h4>
-                            <ul>
-                                <li>Keep heels on the ground</li>
-                                <li>Keep your chest up</li>
-                                <li>Only go as deep as comfortable</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pose-container" data-pose="sideBend">
-                <h2>Standing Side Bend Test</h2>
-                <div class="pose-instructions">
-                    <img src="/api/placeholder/400/300" alt="Side Bend Example" class="pose-example">
-                    <div class="instruction-text">
-                        <h3>Instructions:</h3>
-                        <ol>
-                            <li>Set up your phone on a stable surface</li>
-                            <li>Stand facing the camera</li>
-                            <li>Keep feet shoulder-width apart</li>
-                            <li>Slide one arm down your leg</li>
-                            <li>Keep your other arm overhead</li>
-                        </ol>
-                        <div class="safety-tips">
-                            <h4>Safety Tips:</h4>
-                            <ul>
-                                <li>Keep movement smooth and controlled</li>
-                                <li>Avoid twisting or rotating</li>
-                                <li>Don't bounce or force the stretch</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button id="readyForPhoto" class="secondary-button">Take Photo</button>
-        </div>
-
-        <div id="uploadSection" style="display: none;">
-            <h2 id="uploadTitle">Capture Position</h2>
-            <p id="uploadInstructions">Take or upload a photo as shown in the instructions</p>
-            
-            <div class="photo-options">
-                <button id="takePhoto" class="secondary-button">Take Photo</button>
-                <input type="file" id="photoUpload" accept="image/*" style="display: none;">
-                <input type="file" id="cameraInput" accept="image/*" capture="user" style="display: none;">
-                <button id="uploadButton" class="secondary-button">Choose from Gallery</button>
-            </div>
-            
-            <div id="previewContainer" style="display: none;">
-                <img id="photoPreview" alt="Preview">
-                <button id="confirmPhoto" class="secondary-button">Analyze Photo</button>
-                <button id="retakePhoto" class="secondary-button">Retake Photo</button>
-            </div>
-        </div>
-
-        <div id="loadingScreen" style="display: none;">
-            <div class="loader"></div>
-            <p>Analyzing your mobility...</p>
-        </div>
-
-        <div id="resultsSection" style="display: none;">
-            <h2>Analysis Results</h2>
-            <div class="results-container">
-                <div class="mobility-analysis">
-                    <h3 id="poseTitle">Analysis</h3>
-                    <div id="analysisResult"></div>
-                </div>
-                <div class="recommendations">
-                    <h3>Recommended Exercises</h3>
-                    <div id="exerciseRecommendations"></div>
-                </div>
-                <button id="nextPose" class="primary-button">Continue to Next Pose</button>
-                <button id="startOver" class="secondary-button">Start Over</button>
-                <button id="viewFinalResults" class="primary-button" style="display: none;">View Final Results</button>
-            </div>
-        </div>
-
-        <div id="finalResultsSection" style="display: none;">
-            <h2>Your Overall Mobility Assessment</h2>
-            <div class="final-results-container">
-                <div class="overall-mobility-age">
-                    <h3>Your Overall Mobility Age:</h3>
-                    <div id="finalMobilityAge" class="age-number">--</div>
-                </div>
-                <div class="breakdown">
-                    <h3>Assessment Breakdown</h3>
-                    <div id="poseBreakdown"></div>
-                </div>
-                <div class="final-recommendations">
-                    <h3>Key Areas for Improvement</h3>
-                    <div id="keyRecommendations"></div>
-                </div>
-                <button id="finalStartOver" class="secondary-button">Start New Assessment</button>
-            </div>
-        </div>
-    </div>
-    <script type="module" src="script.js"></script>
+  <footer>
+    <p>&copy; 2024 Mobility Assessment App. All rights reserved.</p>
+  </footer>
 </body>
 </html>
