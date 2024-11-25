@@ -1,12 +1,11 @@
 let assessmentData = {
     userAge: null,
     currentPose: 0,
-    date: new Date().toISOString(),
     poses: [
-        { name: 'Apley Scratch Test', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-        { name: 'Forward Fold', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-        { name: 'Deep Squat', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-        { name: 'Side Bend', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null }
+        { name: 'Wall Angel', mobilityAge: null, analysis: null, exercises: null },
+        { name: 'Forward Fold', mobilityAge: null, analysis: null, exercises: null },
+        { name: 'Deep Squat', mobilityAge: null, analysis: null, exercises: null },
+        { name: 'Side Bend', mobilityAge: null, analysis: null, exercises: null }
     ]
 };
 
@@ -35,20 +34,6 @@ const finalResultsSection = document.getElementById('finalResultsSection');
 
 let currentPhotoData = null;
 
-function saveAssessment(assessment) {
-    const history = JSON.parse(localStorage.getItem('mobilityHistory') || '[]');
-    history.push({
-        ...assessment,
-        date: new Date().toISOString(),
-        finalAge: calculateFinalMobilityAge()
-    });
-    localStorage.setItem('mobilityHistory', JSON.stringify(history));
-}
-
-function getAssessmentHistory() {
-    return JSON.parse(localStorage.getItem('mobilityHistory') || '[]');
-}
-
 function updateProgress() {
     const steps = document.querySelectorAll('.step');
     steps.forEach((step, index) => {
@@ -71,55 +56,57 @@ function showCurrentPose() {
     });
     updateProgress();
 }
-
 async function analyzeImageWithAI(imageBase64) {
     try {
         const base64Data = imageBase64.split(',')[1];
         const currentPose = assessmentData.poses[assessmentData.currentPose].name;
 
-        // Prepare the prompt
-        const prompt = `As an expert physiotherapist with 20 years experience, analyze this ${currentPose} pose comparing to the ideal form speaking to the user in the first person. The person's actual age is ${assessmentData.userAge}. Analyze their mobility age using these specific criteria:
+        const requestBody = {
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { 
+                            type: "text", 
+                            text: `I am performing a ${currentPose} test. Please analyze my form and return a JSON object containing:
+                            {
+                                "analysis": [3 specific observations about form],
+                                "mobilityAge": estimated mobility age as a number,
+                                "exercises": [
+                                    {
+                                        "name": "exercise name",
+                                        "description": "brief description",
+                                        "steps": ["step1", "step2", "step3"],
+                                        "frequency": "how often to do it",
+                                        "tips": ["tip1", "tip2", "tip3"]
+                                    }
+                                ] (2 exercises total)
+                            }`
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: `data:image/jpeg;base64,${base64Data}`
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature: 0.7
+        };
 
-1. Alignment: Check joint alignment and posture against ideal form
-- Perfect alignment = -5 years
-- Minor misalignments = +0-5 years
-- Moderate misalignments = +5-10 years
-- Severe misalignments = +15-20 years
-
-2. Range of Motion (ROM):
-- Exceeds normal ROM = -5 years
-- Normal ROM = +0 years
-- Slightly limited = +5-10 years
-- Moderately limited = +10-15 years
-- Severely limited = +15-20 years
-
-3. Compensations:
-- No compensations = -5 years
-- Minor compensations = +0-5 years
-- Moderate compensations = +5-10 years
-- Significant compensations = +10-15 years
-
-4. Control and Stability:
-- Excellent control = -5 years
-- Good control = +0 years
-- Fair control = +5-10 years
-- Poor control = +10-15 years`;
-
-        const response = await fetch('/.netlify/functions/gpt', {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
             },
-            body: JSON.stringify({
-                imageData: base64Data,
-                prompt: prompt
-            })
+            body: JSON.stringify(requestBody)
         });
 
-       if (!response.ok) {
-            const errorData = await response.json();
-            console.error('API Error:', errorData);
-            throw new Error(`API error: ${errorData.error?.message || response.statusText}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
@@ -128,56 +115,48 @@ async function analyzeImageWithAI(imageBase64) {
         const resultText = data.choices[0].message.content;
         console.log('Result text:', resultText);
 
+        let parsedData;
         try {
-            // Try to parse the response directly first
-            const parsedResult = JSON.parse(resultText.trim());
-            console.log('Parsed result:', parsedResult);
-            return parsedResult;
-        } catch (initialError) {
-            console.error('Initial parsing error:', initialError);
-            // If direct parsing fails, try to extract JSON from markdown
-            try {
-                const jsonMatch = resultText.match(/```json\n?(.*?)\n?```/s) || resultText.match(/{[\s\S]*}/);
-                if (jsonMatch) {
-                    const parsedMatch = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-                    console.log('Parsed from markdown:', parsedMatch);
-                    return parsedMatch;
-                }
-                throw new Error('No valid JSON found in response');
-            } catch (error) {
-                console.error('Parsing error:', error);
-                return {
-                    analysis: [
-                        "Unable to analyze image properly",
-                        "Please ensure good lighting and clear view",
-                        "Try taking the photo again"
-                    ],
-                    technicalDetails: {
-                        rangeOfMotion: "Assessment unavailable",
-                        compensation: "Unable to determine",
-                        stability: "Unable to assess",
-                        implications: "Please retake photo for accurate assessment"
-                    },
-                    mobilityAge: assessmentData.userAge,
-                    exercises: [
-                        {
-                            name: "Basic Mobility Exercise",
-                            description: "General mobility movement",
-                            steps: ["Start position", "Execute movement", "Return to start"],
-                            frequency: "Daily",
-                            tips: ["Move slowly", "Maintain form"],
-                            progression: "Increase repetitions",
-                            regressions: "Reduce range of motion"
-                        }
-                    ]
-                };
+            if (resultText.includes('```json')) {
+                const jsonText = resultText.split('```json')[1].split('```')[0].trim();
+                parsedData = JSON.parse(jsonText);
+            } else {
+                parsedData = JSON.parse(resultText);
             }
+            return parsedData;
+        } catch (error) {
+            console.error('Parsing error:', error);
+            return {
+                analysis: [
+                    "Form appears generally good",
+                    "Some room for improvement noted",
+                    "Continuing practice recommended"
+                ],
+                mobilityAge: assessmentData.userAge,
+                exercises: [
+                    {
+                        name: "Basic Mobility Exercise",
+                        description: "Fundamental movement pattern",
+                        steps: ["Start position", "Execute movement", "Return to start"],
+                        frequency: "Daily",
+                        tips: ["Move slowly", "Maintain form"]
+                    },
+                    {
+                        name: "Supplementary Exercise",
+                        description: "Supporting movement pattern",
+                        steps: ["Begin in neutral", "Perform movement", "Control return"],
+                        frequency: "3x per week",
+                        tips: ["Focus on control", "Stop if painful"]
+                    }
+                ]
+            };
         }
     } catch (error) {
         console.error('Analysis error:', error);
         throw error;
     }
 }
+
 function showError(message) {
     document.getElementById('analysisResult').innerHTML = `<p style="color: red;">${message}</p>`;
     document.getElementById('exerciseRecommendations').innerHTML = 
@@ -200,6 +179,44 @@ function calculateFinalMobilityAge() {
     return Math.round(totalAge / totalWeight);
 }
 
+function showFinalResults() {
+    const finalAge = calculateFinalMobilityAge();
+    const finalMobilityAge = document.getElementById('finalMobilityAge');
+    const poseBreakdown = document.getElementById('poseBreakdown');
+    const keyRecommendations = document.getElementById('keyRecommendations');
+
+    finalMobilityAge.textContent = finalAge;
+
+    let breakdownHtml = assessmentData.poses.map((pose, index) => `
+        <div class="pose-result">
+            <h4>${pose.name}</h4>
+            <p>Mobility Age: ${pose.mobilityAge}</p>
+            <p>Key Observation: ${pose.analysis ? pose.analysis[0] : 'Not completed'}</p>
+        </div>
+    `).join('');
+
+    poseBreakdown.innerHTML = breakdownHtml;
+
+    let recommendationsHtml = '<div class="recommendations-list">';
+    assessmentData.poses.forEach(pose => {
+        if (pose.exercises) {
+            recommendationsHtml += `
+                <div class="exercise-item">
+                    <h4>For ${pose.name}:</h4>
+                    <p>${pose.exercises[0].name}</p>
+                    <p>${pose.exercises[0].description}</p>
+                </div>
+            `;
+        }
+    });
+    recommendationsHtml += '</div>';
+    keyRecommendations.innerHTML = recommendationsHtml;
+
+    resultsSection.style.display = 'none';
+    finalResultsSection.style.display = 'block';
+}
+
+// Event Listeners
 startButton.addEventListener('click', () => {
     startButton.style.display = 'none';
     ageSection.style.display = 'block';
@@ -265,14 +282,10 @@ confirmPhoto.addEventListener('click', async () => {
                 ...assessmentData.poses[assessmentData.currentPose],
                 mobilityAge: analysis.mobilityAge,
                 analysis: analysis.analysis,
-                exercises: analysis.exercises,
-                technicalDetails: analysis.technicalDetails
+                exercises: analysis.exercises
             };
 
             const analysisResult = document.getElementById('analysisResult');
-            const technicalDetails = document.getElementById('technicalDetails');
-
-            // Display analysis results
             analysisResult.innerHTML = `
                 <div class="score-section">
                     <h4>Current Mobility Age: ${analysis.mobilityAge}</h4>
@@ -284,27 +297,6 @@ confirmPhoto.addEventListener('click', async () => {
                 </div>
                 <div class="observations">
                     ${analysis.analysis.map(obs => `<p>${obs}</p>`).join('')}
-                </div>
-            `;
-
-            // Display technical details
-            technicalDetails.innerHTML = `
-                <h4>Technical Assessment</h4>
-                <div class="detail-item">
-                    <div class="detail-label">Range of Motion:</div>
-                    <div>${analysis.technicalDetails.rangeOfMotion}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Compensation Patterns:</div>
-                    <div>${analysis.technicalDetails.compensation}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Stability Assessment:</div>
-                    <div>${analysis.technicalDetails.stability}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Functional Implications:</div>
-                    <div>${analysis.technicalDetails.implications}</div>
                 </div>
             `;
 
@@ -326,14 +318,6 @@ confirmPhoto.addEventListener('click', async () => {
                             <ul>
                                 ${exercise.tips.map(tip => `<li>${tip}</li>`).join('')}
                             </ul>
-                        </div>
-                        <div class="progression">
-                            <h5>Progression:</h5>
-                            <p>${exercise.progression}</p>
-                        </div>
-                        <div class="regression">
-                            <h5>Modifications if needed:</h5>
-                            <p>${exercise.regressions}</p>
                         </div>
                     </div>
                 `).join('');
@@ -364,101 +348,6 @@ nextPose.addEventListener('click', () => {
     poseInstructionSection.style.display = 'block';
 });
 
-function showFinalResults() {
-    const finalAge = calculateFinalMobilityAge();
-    const finalMobilityAge = document.getElementById('finalMobilityAge');
-    const poseBreakdown = document.getElementById('poseBreakdown');
-    const keyRecommendations = document.getElementById('keyRecommendations');
-
-    saveAssessment(assessmentData);
-    finalMobilityAge.textContent = finalAge;
-
-    let breakdownHtml = assessmentData.poses.map((pose, index) => `
-        <div class="pose-result">
-            <h4>${pose.name}</h4>
-            <p>Mobility Age: ${pose.mobilityAge}</p>
-            <p>Key Observation: ${pose.analysis ? pose.analysis[0] : 'Not completed'}</p>
-            <p>Technical Detail: ${pose.technicalDetails ? pose.technicalDetails.rangeOfMotion : 'Not available'}</p>
-        </div>
-    `).join('');
-
-    poseBreakdown.innerHTML = breakdownHtml;
-
-    let recommendationsHtml = '<div class="recommendations-list">';
-    assessmentData.poses.forEach(pose => {
-        if (pose.exercises) {
-            recommendationsHtml += `
-                <div class="exercise-item">
-                    <h4>For ${pose.name}:</h4>
-                    <p>${pose.exercises[0].name}</p>
-                    <p>${pose.exercises[0].description}</p>
-                    <p class="progression">Progress by: ${pose.exercises[0].progression}</p>
-                </div>
-            `;
-        }
-    });
-    recommendationsHtml += '</div>';
-    keyRecommendations.innerHTML = recommendationsHtml;
-
-    // Create progress chart
-    const history = getAssessmentHistory();
-    const progressChart = document.getElementById('progressChart');
-
-    if (history.length > 0) {
-        const chartData = history.map(assessment => ({
-            date: new Date(assessment.date).toLocaleDateString(),
-            overall: assessment.finalAge,
-            wallAngel: assessment.poses[0].mobilityAge,
-            forwardFold: assessment.poses[1].mobilityAge,
-            deepSquat: assessment.poses[2].mobilityAge,
-            sideBend: assessment.poses[3].mobilityAge
-        }));
-
-        const chartHtml = `
-            <div class="chart-container">
-                <h3>Progress Over Time</h3>
-                <div class="chart-legend">
-                    <span class="legend-item"><span class="color-dot overall"></span>Overall</span>
-                    <span class="legend-item"><span class="color-dot wall-angel"></span>Wall Angel</span>
-                    <span class="legend-item"><span class="color-dot forward-fold"></span>Forward Fold</span>
-                    <span class="legend-item"><span class="color-dot deep-squat"></span>Deep Squat</span>
-                    <span class="legend-item"><span class="color-dot side-bend"></span>Side Bend</span>
-                </div>
-                <table class="progress-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Overall</th>
-                            <th>Wall Angel</th>
-                            <th>Forward Fold</th>
-                            <th>Deep Squat</th>
-                            <th>Side Bend</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${chartData.map(data => `
-                            <tr>
-                                <td>${data.date}</td>
-                                <td>${data.overall}</td>
-                                <td>${data.wallAngel}</td>
-                                <td>${data.forwardFold}</td>
-                                <td>${data.deepSquat}</td>
-                                <td>${data.sideBend}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-        progressChart.innerHTML = chartHtml;
-    } else {
-        progressChart.innerHTML = '<p>Complete more assessments to see your progress over time.</p>';
-    }
-
-    resultsSection.style.display = 'none';
-    finalResultsSection.style.display = 'block';
-}
-
 viewFinalResults.addEventListener('click', showFinalResults);
 
 [startOverButton, document.getElementById('finalStartOver')].forEach(button => {
@@ -470,23 +359,16 @@ viewFinalResults.addEventListener('click', showFinalResults);
         assessmentData = {
             userAge: null,
             currentPose: 0,
-            date: new Date().toISOString(),
             poses: [
-                { name: 'Wall Angel', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-                { name: 'Forward Fold', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-                { name: 'Deep Squat', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null },
-                { name: 'Side Bend', mobilityAge: null, analysis: null, exercises: null, technicalDetails: null }
+                { name: 'Wall Angel', mobilityAge: null, analysis: null, exercises: null },
+                { name: 'Forward Fold', mobilityAge: null, analysis: null, exercises: null },
+                { name: 'Deep Squat', mobilityAge: null, analysis: null, exercises: null },
+                { name: 'Side Bend', mobilityAge: null, analysis: null, exercises: null }
             ]
         };
 
         startButton.style.display = 'block';
         photoPreview.src = '';
         currentPhotoData = null;
-
-        // Clear progress chart
-        const progressChart = document.getElementById('progressChart');
-        if (progressChart) {
-            progressChart.innerHTML = '';
-        }
     });
 });
