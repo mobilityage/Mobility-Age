@@ -1,7 +1,0 @@
-{
-  "name": "mobility-assessment",
-  "version": "1.0.0",
-  "dependencies": {
-    "openai": "^4.24.1"
-  }
-}
