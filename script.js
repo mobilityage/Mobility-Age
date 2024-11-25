@@ -1,4 +1,5 @@
 import { config } from './config.js';
+
 let assessmentData = {
     userAge: null,
     currentPose: 0,
