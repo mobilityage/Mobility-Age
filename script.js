@@ -91,9 +91,13 @@ async function analyzeImageWithAI(imageBase64) {
           parsedData = JSON.parse(resultText);
       } catch (e) {
           console.error('Parsing error:', e);
-          // Handle parsing error
+          // Return default structure if parsing fails
           return {
-              analysis: ["Form appears generally good", "Some room for improvement noted", "Continuing practice recommended"],
+              analysis: [
+                  "Form appears generally good",
+                  "Some room for improvement noted",
+                  "Continuing practice recommended"
+              ],
               mobilityAge: assessmentData.userAge,
               exercises: [
                   {
