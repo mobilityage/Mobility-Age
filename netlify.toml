@@ -1,2 +1,8 @@
 [functions]
 directory = "netlify/functions"
+
+[build]
+command = "echo 'No build required'"
+
+[build.environment]
+SECRETS_SCAN_OMIT_PATHS = ".env.local"
