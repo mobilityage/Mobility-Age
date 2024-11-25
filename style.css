@@ -1,359 +1,62 @@
+/* /public/styles.css */
+
 body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
-    color: #333;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f9f9f9;
+  color: #333;
 }
 
-.container {
-    max-width: 600px;
-    margin: 20px auto;
-    padding: 20px;
-    text-align: center;
+header {
+  background-color: #6200ea;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+}
+
+main {
+  padding: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h1, h2, h3 {
+  font-weight: 600;
+}
+
+#pose-display {
+  font-size: 1.2rem;
+  margin: 1rem 0;
+}
+
+section {
+  margin-bottom: 1.5rem;
 }
 
 button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 15px 30px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-top: 20px;
-    transition: background-color 0.3s ease;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  margin: 0.5rem;
+  border: none;
+  background-color: #6200ea;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 button:hover {
-    background-color: #45a049;
+  background-color: #4500b8;
 }
 
-.photo-options {
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
+input[type="file"] {
+  margin: 1rem 0;
 }
 
-.secondary-button {
-    background-color: #2196F3;
-    width: 100%;
-    max-width: 200px;
-    margin: 5px auto;
-}
-
-.secondary-button:hover {
-    background-color: #1976D2;
-}
-
-.primary-button {
-    background-color: #4CAF50;
-    width: 100%;
-    max-width: 200px;
-    margin: 5px auto;
-}
-
-.primary-button:hover {
-    background-color: #45a049;
-}
-
-#previewContainer {
-    margin-top: 20px;
-}
-
-#photoPreview {
-    max-width: 100%;
-    border-radius: 8px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.form-group {
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-    margin-bottom: 15px;
-}
-
-.loader {
-    border: 5px solid #f3f3f3;
-    border-radius: 50%;
-    border-top: 5px solid #2196F3;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin: 20px auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.results-container, .final-results-container {
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin-top: 20px;
-}
-
-.pose-instructions {
-    background-color: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin: 20px auto;
-    max-width: 500px;
-}
-
-.pose-example {
-    max-width: 100%;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.instruction-text {
-    text-align: left;
-}
-
-.instruction-text ol {
-    padding-left: 20px;
-}
-
-.instruction-text li {
-    margin-bottom: 12px;
-    line-height: 1.4;
-}
-
-.safety-tips {
-    background-color: #fff3e0;
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 20px;
-}
-
-.safety-tips h4 {
-    margin-top: 0;
-    color: #e65100;
-}
-
-.safety-tips ul {
-    padding-left: 20px;
-    margin: 0;
-}
-
-.progress-steps {
-    display: flex;
-    justify-content: space-between;
-    max-width: 300px;
-    margin: 20px auto;
-    position: relative;
-}
-
-.progress-steps::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 2px;
-    width: 100%;
-    background-color: #ddd;
-    z-index: 0;
-}
-
-.step {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    position: relative;
-    z-index: 1;
-    transition: background-color 0.3s ease;
-}
-
-.step.active {
-    background-color: #4CAF50;
-}
-
-.step.completed {
-    background-color: #1976D2;
-}
-
-#poseCount {
-    margin: 10px 0;
-    color: #666;
-}
-
-.exercise-item {
-    margin: 15px 0;
-    padding: 20px;
-    background-color: #f8f8f8;
-    border-radius: 8px;
-    text-align: left;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.exercise-item h4 {
-    margin: 0 0 10px 0;
-    color: #1976D2;
-}
-
-.exercise-steps {
-    margin: 15px 0;
-}
-
-.exercise-steps li {
-    margin-bottom: 8px;
-    line-height: 1.4;
-}
-
-.exercise-frequency {
-    margin: 10px 0;
-    padding: 8px;
-    background-color: #e3f2fd;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.exercise-tips {
-    margin-top: 10px;
-    color: #666;
-}
-
-.age-comparison {
-    color: #666;
-    font-style: italic;
-    margin: 10px 0;
-}
-
-.score-section {
-    background-color: #e3f2fd;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.score-section h4 {
-    margin: 0;
-    color: #1976D2;
-}
-
-.final-results-container .age-number {
-    font-size: 48px;
-    font-weight: bold;
-    color: #1976D2;
-    margin: 20px 0;
-}
-
-#poseBreakdown {
-    margin: 20px 0;
-    text-align: left;
-}
-
-.pose-result {
-    padding: 15px;
-    margin: 10px 0;
-    background-color: #f5f5f5;
-    border-radius: 5px;
-}
-
-#retakePhoto {
-    background-color: #ff5722;
-}
-
-#retakePhoto:hover {
-    background-color: #f4511e;
-}
-
-.observations {
-    text-align: left;
-    margin: 15px 0;
-}
-
-.observations p {
-    margin: 8px 0;
-    padding-left: 20px;
-    position: relative;
-}
-
-.observations p:before {
-    content: "•";
-    position: absolute;
-    left: 5px;
-}
-
-.breakdown h3, .final-recommendations h3 {
-    color: #333;
-    margin: 25px 0 15px;
-}
-
-.recommendations-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-h1, h2 {
-    color: #1976D2;
-    margin-bottom: 10px;
-}
-
-h3 {
-    color: #2196F3;
-}
-
-@media (max-width: 480px) {
-    .container {
-        padding: 10px;
-        margin: 10px;
-    }
-
-    .pose-instructions {
-        padding: 15px;
-    }
-
-    button {
-        padding: 12px 24px;
-    }
-
-    .exercise-item {
-        padding: 15px;
-    }
-
-    .final-results-container .age-number {
-        font-size: 36px;
-    }
-
-    .progress-steps {
-        max-width: 250px;
-    }
-
-    .step {
-        width: 25px;
-        height: 25px;
-        font-size: 14px;
-    }
+footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: #6200ea;
+  color: white;
+  margin-top: 2rem;
 }
