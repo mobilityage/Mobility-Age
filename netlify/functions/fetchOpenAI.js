@@ -1,7 +1,6 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
-exports.handler = async function(event, context) {
-// Only allow POST requests
+export async function handler(event, context) {
 if (event.httpMethod !== 'POST') {
   return { statusCode: 405, body: 'Method Not Allowed' };
 }
@@ -42,4 +41,4 @@ try {
     body: JSON.stringify({ error: 'Failed to fetch response from OpenAI' })
   };
 }
-};
+}
