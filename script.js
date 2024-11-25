@@ -96,15 +96,16 @@ async function analyzeImageWithAI(imageBase64) {
             temperature: 0.7
         };
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
-            },
-            body: JSON.stringify(requestBody)
-        });
-
+const apiKey = process.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENAI_API_KEY;
+const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(requestBody)
+});
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
