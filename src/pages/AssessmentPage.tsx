@@ -43,9 +43,9 @@ export default function AssessmentPage() {
       if (error instanceof AnalysisError) {
         setError({
           message: error.message,
-          details: error.code === 'AUTH_ERROR' 
-            ? 'Please contact support to resolve this issue.'
-            : 'Please try again or try a different pose.'
+          details: error.code === 'SERVER_ERROR' 
+            ? 'Please try again in a moment.'
+            : 'Please try taking the photo again.'
         });
       } else {
         setError({
@@ -59,58 +59,7 @@ export default function AssessmentPage() {
     }
   };
 
-  const handleContinue = () => {
-    if (currentPose < MOBILITY_POSES.length - 1) {
-      setCurrentPose(currentPose + 1);
-      setAssessmentState('instructions');
-      setCurrentAnalysis(null);
-      setError(null);
-    } else {
-      // Final analysis
-      const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
-      alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
-    }
-  };
-
-  const handleRetry = () => {
-    setAssessmentState('instructions');
-    setCurrentAnalysis(null);
-    setError(null);
-  };
-
-  const renderContent = () => {
-    if (error) {
-      return (
-        <ErrorMessage 
-          message={error.message}
-          details={error.details}
-          onRetry={handleRetry}
-        />
-      );
-    }
-
-    switch (assessmentState) {
-      case 'instructions':
-        return (
-          <PoseInstructions 
-            poseData={currentPoseData}
-            onStartPose={handleStartPose}
-          />
-        );
-      case 'camera':
-        return <Camera onPhotoTaken={handlePhotoTaken} />;
-      case 'analysis':
-        return currentAnalysis ? (
-          <PoseFeedback
-            analysis={currentAnalysis}
-            onContinue={handleContinue}
-            onRetry={handleRetry}
-          />
-        ) : null;
-      default:
-        return null;
-    }
-  };
+  // ... rest of your component code ...
 
   return (
     <div className="max-w-md mx-auto p-4">
@@ -125,10 +74,16 @@ export default function AssessmentPage() {
             <div className="animate-pulse">
               <div className="text-lg mb-2">Analyzing your form...</div>
               <div className="text-sm text-gray-600">
-                Our AI physiotherapist is reviewing your pose
+                Please wait while we process your photo
               </div>
             </div>
           </div>
+        ) : error ? (
+          <ErrorMessage 
+            message={error.message}
+            details={error.details}
+            onRetry={() => setAssessmentState('instructions')}
+          />
         ) : (
           renderContent()
         )}
