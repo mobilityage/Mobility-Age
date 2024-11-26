@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const handler: Handler = async (event) => {
   console.log('Function started');
@@ -10,7 +10,6 @@ const handler: Handler = async (event) => {
       throw new Error('API key not found');
     }
 
-    // Initialize OpenAI client
     const openai = new OpenAI({
       apiKey: apiKey
     });
@@ -21,43 +20,57 @@ const handler: Handler = async (event) => {
       throw new Error('Missing required fields');
     }
 
-    // Convert base64 to buffer
-    const imageBuffer = Buffer.from(photo.split(',')[1], 'base64');
-
     console.log('Making OpenAI request...');
 
-    const response = await openai.images.create({
-      model: "gpt-4o-mini",
-      file: imageBuffer,
-      purpose: "answers"
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { 
+              type: "text", 
+              text: `As an experienced physiotherapist, analyze this ${poseName} and provide:
+              1. A score (0-100) for form quality
+              2. Specific feedback about technique
+              3. Key recommendations for improvement
+              4. Whether the form is acceptable (yes/no)` 
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: photo,
+              },
+            }
+          ],
+        },
+      ],
+      max_tokens: 500
     });
 
-    console.log('OpenAI response received:', response);
+    console.log('OpenAI response received');
+    const content = completion.choices[0].message.content;
 
-    // Process the response
-    let result = {
-      score: 75,
-      feedback: "Form analysis completed.",
-      recommendations: ["Keep practicing to improve form"],
-      isGoodForm: true
-    };
-
-    if (response.data && response.data.length > 0) {
-      const analysis = response.data[0];
-      // Parse the response based on actual structure
-      // We'll need to adjust this based on what the API returns
-      result = {
-        score: 75, // Default if not provided
-        feedback: analysis.text || "Analysis completed",
-        recommendations: [analysis.suggestion || "Continue practicing"],
-        isGoodForm: true // Default to true
-      };
-    }
+    // Parse the response
+    const score = parseInt(content.match(/\d+(?=\s*\/\s*100|\s*out of\s*100)?/)?.[0] || "75");
+    const feedback = content.split('.')[0] + '.';
+    const recommendations = content
+      .split(/[.!?]/)
+      .filter(s => /should|recommend|try|improve/i.test(s))
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .slice(0, 3);
+    const isGoodForm = /acceptable|good|correct|proper|yes/i.test(content);
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(result)
+      body: JSON.stringify({
+        score,
+        feedback,
+        recommendations: recommendations.length ? recommendations : ["Maintain proper form"],
+        isGoodForm
+      })
     };
 
   } catch (error) {
