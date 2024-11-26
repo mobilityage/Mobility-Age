@@ -3,7 +3,7 @@ export interface PoseInstruction {
   description: string;
   setup: string[];
   steps: string[];
-  duration: number; // in seconds
+  duration: number;
   targetAngle?: number;
   cameraPosition: string;
 }
@@ -24,7 +24,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
       "Try to get your thighs parallel to the ground or lower"
     ],
     duration: 5,
-    targetAngle: 90, // degrees at knee
+    targetAngle: 90,
     cameraPosition: "Position your phone 6-8 feet away, at knee height, from your side"
   },
   {
@@ -75,7 +75,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
       "Relax your head and neck"
     ],
     duration: 3,
-    targetAngle: 90, // degrees at hip
+    targetAngle: 90,
     cameraPosition: "Position your phone 4-5 feet away, at hip height, from your side"
   }
 ];
