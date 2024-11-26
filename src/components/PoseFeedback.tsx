@@ -1,9 +1,4 @@
-interface AnalysisResult {
-  score: number;
-  feedback: string;
-  recommendations: string[];
-  isGoodForm: boolean;
-}
+import { AnalysisResult } from '../services/poseAnalysisService';
 
 interface PoseFeedbackProps {
   analysis: AnalysisResult;
