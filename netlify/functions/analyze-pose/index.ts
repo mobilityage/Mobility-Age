@@ -33,51 +33,44 @@ const handler: Handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const { photo, poseName, poseDescription } = body;
 
-    console.log('Request data:', {
-      poseName,
-      poseDescription,
-      hasPhoto: !!photo
-    });
+    console.log('Processing image for pose:', poseName);
 
     if (!photo) {
       throw new Error('No photo data provided');
     }
+
+    // Format the image data correctly for OpenAI
+    // If it's a base64 string, convert it to a data URL if it isn't already
+    const imageUrl = photo.startsWith('data:image/') 
+      ? photo 
+      : `data:image/jpeg;base64,${photo}`;
 
     const openaiRequestBody = {
       model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
-          content: `You are an experienced physiotherapist analyzing the ${poseName} test. 
-          Evaluate the image and provide:
-          1. A score (0-100) based on form quality
-          2. Specific feedback about alignment and technique
-          3. Clear recommendations for improvement
-          4. A boolean indicating if the form is acceptable
-          
-          Format your response as a JSON object with these exact keys:
-          {
-            "score": number,
-            "feedback": string,
-            "recommendations": string[],
-            "isGoodForm": boolean
-          }`
+          content: `As an experienced physiotherapist, analyze this ${poseName} mobility test. 
+          Focus on form, alignment, and technique.`
         },
         {
           role: "user",
           content: [
             {
               type: "image_url",
-              image_url: photo
+              image_url: imageUrl
+            },
+            {
+              type: "text",
+              text: "Analyze this pose and provide: 1) A score out of 100, 2) Specific feedback on form, 3) Recommendations for improvement, and 4) Whether the form is acceptable (true/false)"
             }
           ]
         }
       ],
-      max_tokens: 500,
-      response_format: { type: "json_object" }
+      max_tokens: 1000
     };
 
-    console.log('Making OpenAI API request');
+    console.log('Sending request to OpenAI...');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -88,7 +81,7 @@ const handler: Handler = async (event) => {
       body: JSON.stringify(openaiRequestBody)
     });
 
-    console.log('OpenAI API response status:', response.status);
+    console.log('OpenAI response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -97,28 +90,30 @@ const handler: Handler = async (event) => {
     }
 
     const aiResponse = await response.json();
-    console.log('OpenAI response received:', JSON.stringify(aiResponse, null, 2));
+    console.log('Received OpenAI response');
 
-    let result: AIResponse;
+    // Parse the AI response content
+    const aiContent = aiResponse.choices[0].message.content;
+    console.log('AI content:', aiContent);
 
-    try {
-      // Try to parse the AI response
-      const parsedContent = JSON.parse(aiResponse.choices[0].message.content);
-      if (parsedContent.score && parsedContent.feedback && parsedContent.recommendations) {
-        result = parsedContent;
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (parseError) {
-      console.error('Error parsing AI response:', parseError);
-      // Fallback response if parsing fails
-      result = {
-        score: 75,
-        feedback: aiResponse.choices[0].message.content,
-        recommendations: ["Keep your form stable", "Maintain proper alignment"],
-        isGoodForm: true
-      };
-    }
+    // Extract the relevant information using regex or simple parsing
+    const score = aiContent.match(/(\d+)(?=\s*(?:\/100|out of 100))/)?.[1] || "75";
+    const isGoodForm = /acceptable|good|correct|proper/i.test(aiContent.toLowerCase());
+
+    // Split the content into sections
+    const sections = aiContent.split(/\n\n|\.\s+/);
+    const feedback = sections[0];
+    const recommendations = sections
+      .filter(s => s.includes('should') || s.includes('recommend') || s.includes('try to'))
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    const result: AIResponse = {
+      score: parseInt(score),
+      feedback: feedback || aiContent,
+      recommendations: recommendations.length ? recommendations : ["Focus on maintaining proper form"],
+      isGoodForm: isGoodForm
+    };
 
     return {
       statusCode: 200,
@@ -134,7 +129,8 @@ const handler: Handler = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to analyze pose',
-        message: error.message
+        message: error.message,
+        trace: process.env.NODE_ENV === 'development' ? error.stack : undefined
       }),
     };
   }
