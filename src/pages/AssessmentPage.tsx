@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MOBILITY_POSES } from '../types/assessment';
-import Camera from '@/components/Camera';  // Updated import path
+import Camera from '@/components/Camera';
+import { PoseInstructions } from '@/components/PoseInstructions';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
@@ -48,32 +49,10 @@ export default function AssessmentPage() {
         <p className="text-gray-600 mb-4">{currentPoseData.description}</p>
 
         {showInstructions ? (
-          <div className="bg-white p-4 rounded-lg shadow-md mb-4">
-            <h3 className="font-bold mb-2">Setup:</h3>
-            <ul className="list-disc pl-5 mb-4">
-              {currentPoseData.setup.map((step, index) => (
-                <li key={`setup-${index}`} className="mb-1">{step}</li>
-              ))}
-            </ul>
-            
-            <h3 className="font-bold mb-2">Steps:</h3>
-            <ul className="list-disc pl-5 mb-4">
-              {currentPoseData.steps.map((step, index) => (
-                <li key={`step-${index}`} className="mb-1">{step}</li>
-              ))}
-            </ul>
-
-            <p className="text-sm text-gray-600 mb-4">
-              {currentPoseData.cameraPosition}
-            </p>
-
-            <button
-              onClick={handleStartPose}
-              className="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            >
-              Start Pose
-            </button>
-          </div>
+          <PoseInstructions 
+            poseData={currentPoseData}
+            onStartPose={handleStartPose}
+          />
         ) : (
           <>
             {isCountingDown ? (
@@ -88,7 +67,7 @@ export default function AssessmentPage() {
         )}
 
         <div className="mt-4 text-center text-sm text-gray-600">
-          Pose {currentPose + 1} of {MOBILITY_POSES.length}
+          <p>Pose {currentPose + 1} of {MOBILITY_POSES.length}</p>
           {photos.length > 0 && (
             <p>{photos.length} poses captured</p>
           )}
