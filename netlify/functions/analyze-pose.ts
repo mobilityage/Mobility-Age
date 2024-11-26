@@ -31,7 +31,7 @@ const handler: Handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model = "gpt-4-turbo-preview",
+        model: "gpt-4-turbo-preview",
         messages: [
           {
             role: "system",
