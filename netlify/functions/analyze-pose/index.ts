@@ -1,5 +1,12 @@
 import { Handler } from '@netlify/functions';
 
+interface AIResponse {
+  score: number;
+  feedback: string;
+  recommendations: string[];
+  isGoodForm: boolean;
+}
+
 const handler: Handler = async (event) => {
   console.log('Function started');
   
@@ -92,20 +99,25 @@ const handler: Handler = async (event) => {
     const aiResponse = await response.json();
     console.log('OpenAI response received:', JSON.stringify(aiResponse, null, 2));
 
-    const formattedResponse = {
-      score: 75,
-      feedback: aiResponse.choices[0].message.content,
-      recommendations: ["Keep your form stable", "Maintain proper alignment"],
-      isGoodForm: true
-    };
+    let result: AIResponse;
 
     try {
+      // Try to parse the AI response
       const parsedContent = JSON.parse(aiResponse.choices[0].message.content);
       if (parsedContent.score && parsedContent.feedback && parsedContent.recommendations) {
-        formattedResponse = parsedContent;
+        result = parsedContent;
+      } else {
+        throw new Error('Invalid response format');
       }
     } catch (parseError) {
       console.error('Error parsing AI response:', parseError);
+      // Fallback response if parsing fails
+      result = {
+        score: 75,
+        feedback: aiResponse.choices[0].message.content,
+        recommendations: ["Keep your form stable", "Maintain proper alignment"],
+        isGoodForm: true
+      };
     }
 
     return {
@@ -113,7 +125,7 @@ const handler: Handler = async (event) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(formattedResponse)
+      body: JSON.stringify(result)
     };
 
   } catch (error) {
