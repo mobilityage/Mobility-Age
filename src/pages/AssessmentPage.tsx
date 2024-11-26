@@ -3,10 +3,9 @@ import { MOBILITY_POSES } from '../types/assessment';
 import Camera from '@/components/Camera';
 import { PoseInstructions } from '@/components/PoseInstructions';
 import { PoseFeedback } from '@/components/PoseFeedback';
-import { ErrorMessage } from '@/components/ErrorMessage';
 import { analyzePose, AnalysisError } from '@/services/poseAnalysisService';
 
-type AssessmentState = 'instructions' | 'camera' | 'analysis' | 'error';
+type AssessmentState = 'instructions' | 'camera' | 'analysis';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
@@ -15,7 +14,7 @@ export default function AssessmentPage() {
   const [assessmentState, setAssessmentState] = useState<AssessmentState>('instructions');
   const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<{ message: string; details?: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const currentPoseData = MOBILITY_POSES[currentPose];
 
@@ -40,20 +39,8 @@ export default function AssessmentPage() {
       setAssessmentState('analysis');
     } catch (error) {
       console.error('Error analyzing pose:', error);
-      if (error instanceof AnalysisError) {
-        setError({
-          message: error.message,
-          details: error.code === 'SERVER_ERROR' 
-            ? 'Please try again in a moment.'
-            : 'Please try taking the photo again.'
-        });
-      } else {
-        setError({
-          message: 'Failed to analyze pose',
-          details: 'An unexpected error occurred. Please try again.'
-        });
-      }
-      setAssessmentState('error');
+      setError(error instanceof AnalysisError ? error.message : 'Failed to analyze pose');
+      setAssessmentState('instructions');
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +51,6 @@ export default function AssessmentPage() {
       setCurrentPose(currentPose + 1);
       setAssessmentState('instructions');
       setCurrentAnalysis(null);
-      setError(null);
     } else {
       const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
       alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
@@ -74,31 +60,6 @@ export default function AssessmentPage() {
   const handleRetry = () => {
     setAssessmentState('instructions');
     setCurrentAnalysis(null);
-    setError(null);
-  };
-
-  const renderContent = () => {
-    switch (assessmentState) {
-      case 'instructions':
-        return (
-          <PoseInstructions 
-            poseData={currentPoseData}
-            onStartPose={handleStartPose}
-          />
-        );
-      case 'camera':
-        return <Camera onPhotoTaken={handlePhotoTaken} />;
-      case 'analysis':
-        return currentAnalysis ? (
-          <PoseFeedback
-            analysis={currentAnalysis}
-            onContinue={handleContinue}
-            onRetry={handleRetry}
-          />
-        ) : null;
-      default:
-        return null;
-    }
   };
 
   return (
@@ -109,6 +70,18 @@ export default function AssessmentPage() {
         </h2>
         <p className="text-gray-600 mb-4">{currentPoseData.description}</p>
 
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="mt-2 text-sm text-red-600 hover:text-red-800"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="text-center py-8 bg-white rounded-lg shadow-md">
             <div className="animate-pulse">
@@ -118,14 +91,25 @@ export default function AssessmentPage() {
               </div>
             </div>
           </div>
-        ) : error ? (
-          <ErrorMessage 
-            message={error.message}
-            details={error.details}
-            onRetry={() => setAssessmentState('instructions')}
-          />
         ) : (
-          renderContent()
+          <>
+            {assessmentState === 'instructions' && (
+              <PoseInstructions 
+                poseData={currentPoseData}
+                onStartPose={handleStartPose}
+              />
+            )}
+            {assessmentState === 'camera' && (
+              <Camera onPhotoTaken={handlePhotoTaken} />
+            )}
+            {assessmentState === 'analysis' && currentAnalysis && (
+              <PoseFeedback
+                analysis={currentAnalysis}
+                onContinue={handleContinue}
+                onRetry={handleRetry}
+              />
+            )}
+          </>
         )}
 
         <div className="mt-4 text-center text-sm text-gray-600">
