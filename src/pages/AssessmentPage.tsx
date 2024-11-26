@@ -7,6 +7,12 @@ import { analyzePose } from '@/services/poseAnalysisService';
 
 type AssessmentState = 'instructions' | 'camera' | 'countdown' | 'analysis';
 
+interface StoredAssessment {
+  photos: string[];
+  analyses: any[];
+  timestamp: number;
+}
+
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -44,10 +50,22 @@ export default function AssessmentPage() {
         poseDescription: currentPoseData.description
       });
       
-      setPhotos([...photos, photoData]);
-      setAnalyses([...analyses, analysis]);
+      const newPhotos = [...photos, photoData];
+      const newAnalyses = [...analyses, analysis];
+      
+      setPhotos(newPhotos);
+      setAnalyses(newAnalyses);
       setCurrentAnalysis(analysis);
       setAssessmentState('analysis');
+
+      // Store progress in localStorage
+      const assessment: StoredAssessment = {
+        photos: newPhotos,
+        analyses: newAnalyses,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('currentAssessment', JSON.stringify(assessment));
+
     } catch (error) {
       console.error('Error analyzing pose:', error);
       alert('Failed to analyze pose. Please try again.');
@@ -63,9 +81,10 @@ export default function AssessmentPage() {
       setAssessmentState('instructions');
       setCurrentAnalysis(null);
     } else {
-      // For now, just show completion message
-      alert('Assessment complete! Final analysis feature coming soon.');
-      // Here we could navigate to a results page or show final analysis
+      // Final analysis
+      const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
+      alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
+      localStorage.removeItem('currentAssessment'); // Clear stored progress
     }
   };
 
@@ -85,9 +104,10 @@ export default function AssessmentPage() {
         );
       case 'countdown':
         return (
-          <div className="text-center mb-4">
-            <div className="text-4xl font-bold text-blue-500">{timer}</div>
-            <p>Get into position...</p>
+          <div className="text-center mb-4 bg-white p-8 rounded-lg shadow-md">
+            <div className="text-6xl font-bold text-blue-500 mb-2">{timer}</div>
+            <p className="text-xl">Get into position...</p>
+            <p className="text-gray-600 mt-2">{currentPoseData.cameraPosition}</p>
           </div>
         );
       case 'camera':
@@ -114,10 +134,12 @@ export default function AssessmentPage() {
         <p className="text-gray-600 mb-4">{currentPoseData.description}</p>
 
         {isLoading ? (
-          <div className="text-center py-8">
-            <div className="text-lg mb-2">Analyzing your form...</div>
-            <div className="text-sm text-gray-600">
-              Our AI physiotherapist is reviewing your pose
+          <div className="text-center py-8 bg-white rounded-lg shadow-md">
+            <div className="animate-pulse">
+              <div className="text-lg mb-2">Analyzing your form...</div>
+              <div className="text-sm text-gray-600">
+                Our AI physiotherapist is reviewing your pose
+              </div>
             </div>
           </div>
         ) : (
@@ -127,7 +149,7 @@ export default function AssessmentPage() {
         <div className="mt-4 text-center text-sm text-gray-600">
           <p>Pose {currentPose + 1} of {MOBILITY_POSES.length}</p>
           {photos.length > 0 && (
-            <p>{photos.length} poses analyzed</p>
+            <p className="mt-1">{photos.length} poses analyzed</p>
           )}
         </div>
       </div>
