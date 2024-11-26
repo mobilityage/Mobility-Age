@@ -24,11 +24,11 @@ const handler: Handler = async (event) => {
           content: [
             { 
               type: "text", 
-              text: `As an experienced physiotherapist with 20 years experience, analyze this ${poseName} and provide:
-              1. A mobility age based on form quality
+              text: `As an experienced physiotherapist, analyze this ${poseName} and provide:
+              1. An estimated mobility age based on form quality as it relates to biological age
               2. Specific feedback about technique
               3. Key recommendations for improvement
-              4. Whether the form is acceptable (yes/no)` 
+              4. Example exercises with succinct instructions the user should perform in order to improve their form` 
             },
             {
               type: "image_url",
