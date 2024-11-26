@@ -3,15 +3,10 @@ import { MOBILITY_POSES } from '../types/assessment';
 import Camera from '@/components/Camera';
 import { PoseInstructions } from '@/components/PoseInstructions';
 import { PoseFeedback } from '@/components/PoseFeedback';
-import { analyzePose } from '@/services/poseAnalysisService';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { analyzePose, AnalysisError } from '@/services/poseAnalysisService';
 
-type AssessmentState = 'instructions' | 'camera' | 'countdown' | 'analysis';
-
-interface StoredAssessment {
-  photos: string[];
-  analyses: any[];
-  timestamp: number;
-}
+type AssessmentState = 'instructions' | 'camera' | 'countdown' | 'analysis' | 'error';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
@@ -21,6 +16,7 @@ export default function AssessmentPage() {
   const [timer, setTimer] = useState(5);
   const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<{ message: string; details?: string } | null>(null);
 
   useEffect(() => {
     let interval: number;
@@ -38,11 +34,13 @@ export default function AssessmentPage() {
   const currentPoseData = MOBILITY_POSES[currentPose];
 
   const handleStartPose = () => {
+    setError(null);
     setAssessmentState('countdown');
   };
 
   const handlePhotoTaken = async (photoData: string) => {
     setIsLoading(true);
+    setError(null);
     try {
       const analysis = await analyzePose({
         photo: photoData,
@@ -50,26 +48,26 @@ export default function AssessmentPage() {
         poseDescription: currentPoseData.description
       });
       
-      const newPhotos = [...photos, photoData];
-      const newAnalyses = [...analyses, analysis];
-      
-      setPhotos(newPhotos);
-      setAnalyses(newAnalyses);
+      setPhotos([...photos, photoData]);
+      setAnalyses([...analyses, analysis]);
       setCurrentAnalysis(analysis);
       setAssessmentState('analysis');
-
-      // Store progress in localStorage
-      const assessment: StoredAssessment = {
-        photos: newPhotos,
-        analyses: newAnalyses,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('currentAssessment', JSON.stringify(assessment));
-
     } catch (error) {
       console.error('Error analyzing pose:', error);
-      alert('Failed to analyze pose. Please try again.');
-      setAssessmentState('instructions');
+      if (error instanceof AnalysisError) {
+        setError({
+          message: error.message,
+          details: error.code === 'AUTH_ERROR' 
+            ? 'Please contact support to resolve this issue.'
+            : 'Please try again or try a different pose.'
+        });
+      } else {
+        setError({
+          message: 'Failed to analyze pose',
+          details: 'An unexpected error occurred. Please try again.'
+        });
+      }
+      setAssessmentState('error');
     } finally {
       setIsLoading(false);
     }
@@ -80,20 +78,31 @@ export default function AssessmentPage() {
       setCurrentPose(currentPose + 1);
       setAssessmentState('instructions');
       setCurrentAnalysis(null);
+      setError(null);
     } else {
       // Final analysis
       const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
       alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
-      localStorage.removeItem('currentAssessment'); // Clear stored progress
     }
   };
 
   const handleRetry = () => {
     setAssessmentState('instructions');
     setCurrentAnalysis(null);
+    setError(null);
   };
 
   const renderContent = () => {
+    if (error) {
+      return (
+        <ErrorMessage 
+          message={error.message}
+          details={error.details}
+          onRetry={handleRetry}
+        />
+      );
+    }
+
     switch (assessmentState) {
       case 'instructions':
         return (
