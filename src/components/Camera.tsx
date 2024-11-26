@@ -44,9 +44,10 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
   }, []);
 
   useEffect(() => {
-    let interval: number;
+    let intervalId: NodeJS.Timeout | undefined;
+    
     if (isCountingDown && countdown > 0) {
-      interval = setInterval(() => {
+      intervalId = setInterval(() => {
         setCountdown(prev => prev - 1);
       }, 1000);
     } else if (countdown === 0) {
@@ -54,7 +55,10 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
       setIsCountingDown(false);
       setCountdown(5);
     }
-    return () => clearInterval(interval);
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [isCountingDown, countdown]);
 
   const startCountdown = () => {
