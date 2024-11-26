@@ -5,7 +5,6 @@ const handler: Handler = async (event) => {
   
   const apiKey = process.env.OPENAI_API_KEY;
   console.log('API Key exists:', !!apiKey);
-  console.log('API Key starts with:', apiKey?.substring(0, 4));
 
   if (!apiKey) {
     return {
@@ -18,90 +17,96 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    console.log('Request method:', event.httpMethod);
-    
     const body = JSON.parse(event.body || '{}');
-    console.log('Request body keys:', Object.keys(body));
+    const { photo, poseName, poseDescription } = body;
+    console.log('Analyzing pose:', poseName);
 
-    if (!body.photo) {
+    if (!photo) {
       throw new Error('No photo data received');
     }
 
-    console.log('Attempting OpenAI API call...');
+    console.log('Preparing OpenAI API call...');
 
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4-turbo-preview",  // Updated to use GPT-4 Turbo
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are an expert physiotherapist analyzing mobility tests."
+            content: `You are an experienced physiotherapist analyzing a ${poseName} mobility test.`
           },
           {
             role: "user",
-            content: `Analyze this mobility test for ${body.poseName}. Provide:
-            1. A numerical score (0-100) based on form quality
-            2. Specific feedback about technique
-            3. Clear recommendations for improvement
-            4. A yes/no assessment of whether the form is acceptable
-            
-            Format your response with clear sections for each component.`
+            content: [
+              {
+                type: "image_url",
+                image_url: photo
+              },
+              {
+                type: "text",
+                text: `Analyze this ${poseName} and provide:
+                1. A score (0-100) for form quality
+                2. Specific feedback about technique and alignment
+                3. Key recommendations for improvement
+                4. Whether the form is acceptable (yes/no)`
+              }
+            ]
           }
         ],
         max_tokens: 500
       })
     });
 
-    console.log('OpenAI API response status:', openaiResponse.status);
+    console.log('OpenAI API response status:', response.status);
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
+    if (!response.ok) {
+      const errorData = await response.json();
       console.error('OpenAI API error:', errorData);
       throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
     }
 
-    const openaiResult = await openaiResponse.json();
+    const result = await response.json();
     console.log('Successfully received OpenAI response');
-
-    // Parse the AI response
-    const aiContent = openaiResult.choices[0].message.content;
-    console.log('AI content:', aiContent);
-
-    // Extract score (looking for numbers followed by /100 or similar patterns)
+    
+    // Parse the content
+    const aiContent = result.choices[0].message.content;
+    
+    // Extract score
     const scoreMatch = aiContent.match(/(\d+)(?:\s*\/\s*100|\s*out of\s*100)?/);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : 75;
 
-    // Check if form is acceptable (looking for positive indicators)
+    // Check if form is acceptable
     const isGoodForm = /acceptable|good|correct|proper|yes/i.test(aiContent.toLowerCase());
 
-    // Extract recommendations (looking for sentences with action words)
+    // Extract recommendations
     const recommendations = aiContent
       .split(/\.|!|\?/)
       .filter(sentence => 
         sentence.toLowerCase().includes('should') || 
         sentence.toLowerCase().includes('recommend') || 
-        sentence.toLowerCase().includes('try') ||
         sentence.toLowerCase().includes('improve')
       )
       .map(rec => rec.trim())
       .filter(rec => rec.length > 0);
+
+    const analysisResult = {
+      score,
+      feedback: aiContent.split('.')[0] + '.',  // First sentence as feedback
+      recommendations: recommendations.length ? recommendations : ["Focus on maintaining proper form"],
+      isGoodForm
+    };
 
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        score,
-        feedback: aiContent.split('.')[0] + '.',  // First sentence as feedback
-        recommendations: recommendations.length ? recommendations : ["Focus on maintaining proper form"],
-        isGoodForm
-      })
+      body: JSON.stringify(analysisResult)
     };
 
   } catch (error) {
