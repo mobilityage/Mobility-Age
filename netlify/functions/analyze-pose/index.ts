@@ -24,11 +24,17 @@ const handler: Handler = async (event) => {
           content: [
             { 
               type: "text", 
-              text: `As an experienced physiotherapist, analyze this ${poseName} and provide:
-              1. An estimated mobility age based on form quality as it relates to biological age
-              2. Specific feedback about technique
-              3. Key recommendations for improvement
-              4. Example exercises with succinct instructions the user should perform in order to improve their form` 
+              text: `You are a physiotherapist specializing in mobility assessment. Analyze the provided still image of a person performing a mobility pose. Provide feedback on the following aspects:
+
+Posture and Alignment:
+Assess the alignment of the spine, hips, knees, and ankles. Note any deviations from optimal posture.
+Joint Positioning:
+Evaluate the positioning of key joints (shoulders, hips, knees, and ankles) in the pose. Identify any signs of stiffness or restricted range of motion.
+Balance and Stability:
+Assess the individual’s balance and stability as depicted in the image. Does the pose suggest a stable base of support?
+Overall Mobility Age:
+Based on your analysis, estimate a "mobility age" for the individual, reflecting their mobility and physical capabilities compared to normative data for different age groups.
+Provide your feedback clearly and constructively, while acknowledging the limitations of assessing mobility from a still image.` 
             },
             {
               type: "image_url",
