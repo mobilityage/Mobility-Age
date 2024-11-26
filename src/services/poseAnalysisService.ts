@@ -1,10 +1,10 @@
-interface PoseAnalysis {
+export interface PoseAnalysis {
   photo: string;
   poseName: string;
   poseDescription: string;
 }
 
-interface AnalysisResult {
+export interface AnalysisResult {
   score: number;
   feedback: string;
   recommendations: string[];
