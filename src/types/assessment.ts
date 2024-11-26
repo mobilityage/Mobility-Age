@@ -47,24 +47,6 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     referenceImage: "/images/poses/apley-scratch.jpg"
   },
   {
-    name: "Knee to Wall Test",
-    description: "Tests ankle mobility and dorsiflexion",
-    setup: [
-      "Stand facing a wall, about 4 inches away",
-      "Place one foot approximately 4 inches (10cm) away from the wall",
-      "Keep your heel firmly planted"
-    ],
-    steps: [
-      "Bend your knee to touch the wall",
-      "Keep your heel planted firmly on the ground",
-      "If successful, move your foot back slightly and repeat",
-      "Stop when your heel starts to lift or knee can't touch wall"
-    ],
-    duration: 3,
-    cameraPosition: "Position your phone 3-4 feet away, parallel to your side",
-    referenceImage: "/images/poses/knee-wall.jpg"
-  },
-  {
     name: "Forward Fold",
     description: "Tests hamstrings flexibility and hip mobility",
     setup: [
@@ -82,5 +64,23 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     targetAngle: 90,
     cameraPosition: "Position your phone 4-5 feet away, at hip height, from your side",
     referenceImage: "/images/poses/forward-fold.jpg"
+  },
+  {
+    name: "Knee to Wall Test",
+    description: "Tests ankle mobility and dorsiflexion",
+    setup: [
+      "Stand facing a wall, about 4 inches away",
+      "Place one foot approximately 4 inches (10cm) away from the wall",
+      "Keep your heel firmly planted"
+    ],
+    steps: [
+      "Bend your knee to touch the wall",
+      "Keep your heel planted firmly on the ground",
+      "If successful, move your foot back slightly and repeat",
+      "Stop when your heel starts to lift or knee can't touch wall"
+    ],
+    duration: 3,
+    cameraPosition: "Position your phone 3-4 feet away, parallel to your side",
+    referenceImage: "/images/poses/knee-wall.jpg"
   }
 ];
