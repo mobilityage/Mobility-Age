@@ -29,37 +29,29 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        photo: data.photo,
+        poseName: data.poseName,
+        poseDescription: data.poseDescription
+      })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (response.status === 401 || response.status === 403) {
-        throw new AnalysisError(
-          'API authorization failed. Please check API key configuration.',
-          'AUTH_ERROR'
-        );
-      }
-      
       if (response.status === 500) {
         throw new AnalysisError(
           'Server error during analysis. Please try again.',
           'SERVER_ERROR',
-          errorData
+          await response.text()
         );
       }
-
       throw new AnalysisError(
         'Failed to analyze pose.',
-        'UNKNOWN_ERROR',
-        errorData
+        'API_ERROR',
+        await response.text()
       );
     }
 
     const result = await response.json();
-
-    // Validate the response structure
     if (!isValidAnalysisResult(result)) {
       throw new AnalysisError(
         'Invalid analysis result received',
@@ -70,14 +62,12 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     return result;
   } catch (error) {
     console.error('Error in analyzePose:', error);
-    
     if (error instanceof AnalysisError) {
       throw error;
     }
-
     throw new AnalysisError(
       'Failed to complete pose analysis',
-      'NETWORK_ERROR',
+      'UNKNOWN_ERROR',
       error
     );
   }
