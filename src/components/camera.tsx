@@ -4,7 +4,7 @@ interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
 }
 
-export default function Camera({ onPhotoTaken }: CameraProps) {
+const Camera = ({ onPhotoTaken }: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -67,4 +67,6 @@ export default function Camera({ onPhotoTaken }: CameraProps) {
       )}
     </div>
   );
-}
+};
+
+export default Camera;
