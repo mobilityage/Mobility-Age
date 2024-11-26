@@ -35,10 +35,12 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Format the base64 image properly for OpenAI
-    const base64ImageData = photo.replace(/^data:image\/[a-z]+;base64,/, '');
+    console.log('Preparing API call...');
 
-    console.log('Calling OpenAI API...');
+    // Log more details about the request we're about to make
+    console.log('Model:', 'gpt-4o-mini');
+    console.log('Pose:', poseName);
+    console.log('Photo data length:', photo.length);
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -57,19 +59,16 @@ const handler: Handler = async (event) => {
             role: "user",
             content: [
               {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64ImageData}`,
-                  detail: "low"
-                }
-              },
-              {
                 type: "text",
                 text: `Analyze this ${poseName} and provide:
                 1. A score (0-100) for form quality
                 2. Specific feedback about technique
                 3. Key recommendations for improvement
                 4. Whether the form is acceptable (yes/no)`
+              },
+              {
+                type: "image_url",
+                url: photo  // Send the base64 data URL directly
               }
             ]
           }
@@ -77,22 +76,19 @@ const handler: Handler = async (event) => {
       })
     });
 
+    // Log the response status and headers
     console.log('OpenAI response status:', openaiResponse.status);
+    console.log('OpenAI response headers:', Object.fromEntries(openaiResponse.headers));
 
     if (!openaiResponse.ok) {
       const errorData = await openaiResponse.json();
       console.error('OpenAI API error:', errorData);
-      return {
-        statusCode: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          error: 'AI analysis failed',
-          message: errorData.error?.message || 'Unknown error'
-        })
-      };
+      throw new Error(errorData.error?.message || 'API request failed');
     }
 
     const aiResult = await openaiResponse.json();
+    console.log('Received AI response:', aiResult);
+
     const content = aiResult.choices[0].message.content;
 
     // Parse the response
@@ -121,12 +117,15 @@ const handler: Handler = async (event) => {
 
   } catch (error) {
     console.error('Function error:', error);
+    
+    // Return a more detailed error response
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         error: 'Analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.stack : undefined
       })
     };
   }
