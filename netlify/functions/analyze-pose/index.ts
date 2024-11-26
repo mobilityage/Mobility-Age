@@ -24,8 +24,8 @@ const handler: Handler = async (event) => {
           content: [
             { 
               type: "text", 
-              text: `As an experienced physiotherapist, analyze this ${poseName} and provide:
-              1. A score (0-100) for form quality
+              text: `As an experienced physiotherapist with 20 years experience, analyze this ${poseName} and provide:
+              1. A mobility age based on form quality
               2. Specific feedback about technique
               3. Key recommendations for improvement
               4. Whether the form is acceptable (yes/no)` 
