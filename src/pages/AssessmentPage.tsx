@@ -59,7 +59,47 @@ export default function AssessmentPage() {
     }
   };
 
-  // ... rest of your component code ...
+  const handleContinue = () => {
+    if (currentPose < MOBILITY_POSES.length - 1) {
+      setCurrentPose(currentPose + 1);
+      setAssessmentState('instructions');
+      setCurrentAnalysis(null);
+      setError(null);
+    } else {
+      const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
+      alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
+    }
+  };
+
+  const handleRetry = () => {
+    setAssessmentState('instructions');
+    setCurrentAnalysis(null);
+    setError(null);
+  };
+
+  const renderContent = () => {
+    switch (assessmentState) {
+      case 'instructions':
+        return (
+          <PoseInstructions 
+            poseData={currentPoseData}
+            onStartPose={handleStartPose}
+          />
+        );
+      case 'camera':
+        return <Camera onPhotoTaken={handlePhotoTaken} />;
+      case 'analysis':
+        return currentAnalysis ? (
+          <PoseFeedback
+            analysis={currentAnalysis}
+            onContinue={handleContinue}
+            onRetry={handleRetry}
+          />
+        ) : null;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="max-w-md mx-auto p-4">
