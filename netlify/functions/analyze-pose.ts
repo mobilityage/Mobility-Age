@@ -35,16 +35,11 @@ const handler: Handler = async (event) => {
         messages: [
           {
             role: "system",
-            content: `You are an expert physiotherapist with 20 years experience analyzing the ${poseName} mobility test. 
-            Evaluate the image for:
-            1. Overall form quality
-            2. Specific observations about:
-               - Joint alignment
-               - Range of motion
-               - Stability and control
-               - Common compensations or errors
-            3. Key areas for improvement
-            4. Whether the form is acceptable to proceed (true/false)
+            content: `As an experienced physiotherapist, analyze this ${poseName} and provide:
+              1. An estimated mobility age based on form quality as it relates to biological age
+              2. Specific feedback about technique
+              3. Key recommendations for improvement
+              4. Example exercises with succinct instructions the user should perform in order to improve their form`
             
             Consider these specific criteria for ${poseName}:
             - Proper joint alignment throughout the movement
