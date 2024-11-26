@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Camera from '/src/components/Camera'; // Make sure this path is correct
+import Camera from '../components/Camera.tsx'; // Make sure this path is correct
 import { MOBILITY_POSES } from '../types/assessment';
 
 export default function AssessmentPage() {
