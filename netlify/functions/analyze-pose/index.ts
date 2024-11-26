@@ -1,7 +1,6 @@
 import { Handler } from '@netlify/functions';
 
 const handler: Handler = async (event) => {
-  // Add detailed logging
   console.log('=== Function Start ===');
   
   const apiKey = process.env.OPENAI_API_KEY;
@@ -19,9 +18,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    // Log incoming request details
     console.log('Request method:', event.httpMethod);
-    console.log('Request headers:', event.headers);
     
     const body = JSON.parse(event.body || '{}');
     console.log('Request body keys:', Object.keys(body));
@@ -30,7 +27,6 @@ const handler: Handler = async (event) => {
       throw new Error('No photo data received');
     }
 
-    // Log before API call
     console.log('Attempting OpenAI API call...');
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -40,21 +36,27 @@ const handler: Handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4", // Changed from gpt-4-vision-preview
+        model: "gpt-4-turbo-preview",  // Updated to use GPT-4 Turbo
         messages: [
           {
+            role: "system",
+            content: "You are an expert physiotherapist analyzing mobility tests."
+          },
+          {
             role: "user",
-            content: `Analyze this mobility test for ${body.poseName}. Consider:
-            1. Form quality (score out of 100)
-            2. Technique assessment
-            3. Areas for improvement
-            4. Overall acceptability (yes/no)`
+            content: `Analyze this mobility test for ${body.poseName}. Provide:
+            1. A numerical score (0-100) based on form quality
+            2. Specific feedback about technique
+            3. Clear recommendations for improvement
+            4. A yes/no assessment of whether the form is acceptable
+            
+            Format your response with clear sections for each component.`
           }
-        ]
+        ],
+        max_tokens: 500
       })
     });
 
-    // Log API response status
     console.log('OpenAI API response status:', openaiResponse.status);
 
     if (!openaiResponse.ok) {
@@ -63,20 +65,42 @@ const handler: Handler = async (event) => {
       throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
     }
 
-    const result = await openaiResponse.json();
+    const openaiResult = await openaiResponse.json();
     console.log('Successfully received OpenAI response');
 
-    // For testing, return a mock response
+    // Parse the AI response
+    const aiContent = openaiResult.choices[0].message.content;
+    console.log('AI content:', aiContent);
+
+    // Extract score (looking for numbers followed by /100 or similar patterns)
+    const scoreMatch = aiContent.match(/(\d+)(?:\s*\/\s*100|\s*out of\s*100)?/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 75;
+
+    // Check if form is acceptable (looking for positive indicators)
+    const isGoodForm = /acceptable|good|correct|proper|yes/i.test(aiContent.toLowerCase());
+
+    // Extract recommendations (looking for sentences with action words)
+    const recommendations = aiContent
+      .split(/\.|!|\?/)
+      .filter(sentence => 
+        sentence.toLowerCase().includes('should') || 
+        sentence.toLowerCase().includes('recommend') || 
+        sentence.toLowerCase().includes('try') ||
+        sentence.toLowerCase().includes('improve')
+      )
+      .map(rec => rec.trim())
+      .filter(rec => rec.length > 0);
+
     return {
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        score: 75,
-        feedback: "Test analysis complete",
-        recommendations: ["Test recommendation 1", "Test recommendation 2"],
-        isGoodForm: true
+        score,
+        feedback: aiContent.split('.')[0] + '.',  // First sentence as feedback
+        recommendations: recommendations.length ? recommendations : ["Focus on maintaining proper form"],
+        isGoodForm
       })
     };
 
