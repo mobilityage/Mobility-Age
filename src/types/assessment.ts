@@ -6,6 +6,7 @@ export interface PoseInstruction {
   duration: number;
   targetAngle?: number;
   cameraPosition: string;
+  referenceImage: string;
 }
 
 export const MOBILITY_POSES: PoseInstruction[] = [
@@ -25,7 +26,8 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     ],
     duration: 5,
     targetAngle: 90,
-    cameraPosition: "Position your phone 6-8 feet away, at knee height, from your side"
+    cameraPosition: "Position your phone 6-8 feet away, at knee height, from your side",
+    referenceImage: "/images/poses/deep-squat.jpg"
   },
   {
     name: "Apley Scratch Test",
@@ -41,7 +43,8 @@ export const MOBILITY_POSES: PoseInstruction[] = [
       "Hold the position when you reach your maximum range"
     ],
     duration: 3,
-    cameraPosition: "Position your phone 4-5 feet away, facing your back"
+    cameraPosition: "Position your phone 4-5 feet away, facing your back",
+    referenceImage: "/images/poses/apley-scratch.jpg"
   },
   {
     name: "Knee to Wall Test",
@@ -58,7 +61,8 @@ export const MOBILITY_POSES: PoseInstruction[] = [
       "Stop when your heel starts to lift or knee can't touch wall"
     ],
     duration: 3,
-    cameraPosition: "Position your phone 3-4 feet away, parallel to your side"
+    cameraPosition: "Position your phone 3-4 feet away, parallel to your side",
+    referenceImage: "/images/poses/knee-wall.jpg"
   },
   {
     name: "Forward Fold",
@@ -76,6 +80,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     ],
     duration: 3,
     targetAngle: 90,
-    cameraPosition: "Position your phone 4-5 feet away, at hip height, from your side"
+    cameraPosition: "Position your phone 4-5 feet away, at hip height, from your side",
+    referenceImage: "/images/poses/forward-fold.jpg"
   }
 ];
