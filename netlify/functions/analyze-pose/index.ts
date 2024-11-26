@@ -5,14 +5,8 @@ const handler: Handler = async (event) => {
   console.log('Function started');
   
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('API key not found');
-    }
-
-    const openai = new OpenAI({
-      apiKey: apiKey
-    });
+    // Initialize OpenAI with environment variable API key
+    const openai = new OpenAI();
 
     const { photo, poseName, poseDescription } = JSON.parse(event.body || '{}');
 
