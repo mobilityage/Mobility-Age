@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MOBILITY_POSES } from '../types/assessment';
 import Camera from '@/components/Camera';
 import { PoseInstructions } from '@/components/PoseInstructions';
@@ -6,36 +6,22 @@ import { PoseFeedback } from '@/components/PoseFeedback';
 import { ErrorMessage } from '@/components/ErrorMessage';
 import { analyzePose, AnalysisError } from '@/services/poseAnalysisService';
 
-type AssessmentState = 'instructions' | 'camera' | 'countdown' | 'analysis' | 'error';
+type AssessmentState = 'instructions' | 'camera' | 'analysis' | 'error';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [assessmentState, setAssessmentState] = useState<AssessmentState>('instructions');
-  const [timer, setTimer] = useState(5);
   const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
-
-  useEffect(() => {
-    let interval: number;
-    if (assessmentState === 'countdown' && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else if (timer === 0) {
-      setAssessmentState('camera');
-      setTimer(5);
-    }
-    return () => clearInterval(interval);
-  }, [assessmentState, timer]);
 
   const currentPoseData = MOBILITY_POSES[currentPose];
 
   const handleStartPose = () => {
     setError(null);
-    setAssessmentState('countdown');
+    setAssessmentState('camera');
   };
 
   const handlePhotoTaken = async (photoData: string) => {
@@ -110,14 +96,6 @@ export default function AssessmentPage() {
             poseData={currentPoseData}
             onStartPose={handleStartPose}
           />
-        );
-      case 'countdown':
-        return (
-          <div className="text-center mb-4 bg-white p-8 rounded-lg shadow-md">
-            <div className="text-6xl font-bold text-blue-500 mb-2">{timer}</div>
-            <p className="text-xl">Get into position...</p>
-            <p className="text-gray-600 mt-2">{currentPoseData.cameraPosition}</p>
-          </div>
         );
       case 'camera':
         return <Camera onPhotoTaken={handlePhotoTaken} />;
