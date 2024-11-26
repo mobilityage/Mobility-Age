@@ -20,9 +20,18 @@ export class AnalysisError extends Error {
 
 export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
   try {
+    // Log the attempt
+    console.log('Starting pose analysis for:', data.poseName);
+
+    // Verify photo data exists and is in correct format
+    if (!data.photo) {
+      throw new AnalysisError('No photo data provided');
+    }
+
     const response = await fetch('/.netlify/functions/analyze-pose', {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -32,30 +41,49 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
       })
     });
 
+    // Log response status
+    console.log('Response status:', response.status);
+
     if (!response.ok) {
-      throw new AnalysisError('Failed to analyze pose. Please try again.');
+      const errorText = await response.text();
+      console.error('Server response:', errorText);
+      throw new AnalysisError(`Server error: ${errorText}`);
     }
 
     const result = await response.json();
-    
+    console.log('Received analysis result');
+
     if (!isValidAnalysisResult(result)) {
-      throw new AnalysisError('Invalid response from analysis service');
+      console.error('Invalid result structure:', result);
+      throw new AnalysisError('Invalid response format from server');
     }
 
     return result;
   } catch (error) {
-    console.error('Error in analyzePose:', error);
-    throw error instanceof AnalysisError ? error : new AnalysisError('Failed to analyze pose');
+    console.error('Analysis error:', error);
+    if (error instanceof AnalysisError) {
+      throw error;
+    }
+    throw new AnalysisError('Failed to analyze pose. Please try again.');
   }
 }
 
 function isValidAnalysisResult(result: any): result is AnalysisResult {
-  return (
-    result &&
+  const isValid = result &&
     typeof result === 'object' &&
     typeof result.score === 'number' &&
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
-    typeof result.isGoodForm === 'boolean'
-  );
+    typeof result.isGoodForm === 'boolean';
+
+  if (!isValid) {
+    console.log('Invalid result structure:', {
+      hasScore: typeof result?.score === 'number',
+      hasFeedback: typeof result?.feedback === 'string',
+      hasRecommendations: Array.isArray(result?.recommendations),
+      hasIsGoodForm: typeof result?.isGoodForm === 'boolean'
+    });
+  }
+
+  return isValid;
 }
