@@ -46,7 +46,7 @@ const handler: Handler = async (event) => {
       : `data:image/jpeg;base64,${photo}`;
 
     const openaiRequestBody = {
-      model: "gpt-4-vision-preview",
+      model = "gpt-4-turbo-preview",
       messages: [
         {
           role: "system",
