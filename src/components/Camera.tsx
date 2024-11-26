@@ -8,6 +8,8 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCountingDown, setIsCountingDown] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   const startCamera = async () => {
     try {
@@ -40,6 +42,24 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let interval: number;
+    if (isCountingDown && countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      takePhoto();
+      setIsCountingDown(false);
+      setCountdown(5);
+    }
+    return () => clearInterval(interval);
+  }, [isCountingDown, countdown]);
+
+  const startCountdown = () => {
+    setIsCountingDown(true);
+  };
 
   const takePhoto = () => {
     if (!videoRef.current) return;
@@ -87,15 +107,28 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
           className="w-full h-full object-cover"
           onLoadedMetadata={() => setIsStreaming(true)}
         />
-        {isStreaming && (
-          <button
-            onClick={takePhoto}
-            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 
-                     bg-white text-blue-500 px-6 py-2 rounded-full shadow-lg
-                     hover:bg-blue-50 transition-colors"
-          >
-            Take Photo
-          </button>
+        
+        {isStreaming && !isCountingDown && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-30">
+            <p className="text-white mb-4 text-lg">
+              Position yourself according to the instructions
+            </p>
+            <button
+              onClick={startCountdown}
+              className="bg-white text-blue-500 px-6 py-2 rounded-full shadow-lg
+                       hover:bg-blue-50 transition-colors"
+            >
+              Take Photo
+            </button>
+          </div>
+        )}
+
+        {isCountingDown && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="text-white text-6xl font-bold">
+              {countdown}
+            </div>
+          </div>
         )}
       </div>
 
