@@ -22,7 +22,13 @@ const handler: Handler = async (event) => {
         messages: [
           {
             role: "system",
-            content: `You are an experienced physiotherapist analyzing mobility tests. You are currently assessing the ${poseName} test which ${poseDescription}. Provide specific feedback on form and recommendations for improvement.`
+            content: `You are an experienced physiotherapist analyzing mobility tests. 
+            For the ${poseName} test (which ${poseDescription}), analyze the image and provide:
+            1. A score from 0-100 based on form quality
+            2. Specific feedback about the user's form
+            3. 2-3 clear recommendations for improvement
+            4. A boolean indicating if the form is good enough to proceed
+            Format your response as a JSON object with these exact keys: score, feedback, recommendations (array), isGoodForm`
           },
           {
             role: "user",
@@ -41,20 +47,18 @@ const handler: Handler = async (event) => {
 
     const aiResponse = await response.json();
     
-    // For testing, return a mock response
-    const analysis = {
-      score: 75,
-      feedback: "Good attempt at the pose. Your form shows proper alignment but there's room for improvement.",
-      recommendations: [
-        "Try to maintain a more neutral spine position",
-        "Focus on keeping your weight evenly distributed"
-      ],
-      isGoodForm: true
-    };
-
+    // For initial testing, return a mock response
     return {
       statusCode: 200,
-      body: JSON.stringify(analysis),
+      body: JSON.stringify({
+        score: 75,
+        feedback: "Good attempt at the " + poseName + ". Your form shows proper alignment but there's room for improvement.",
+        recommendations: [
+          "Keep your back straight throughout the movement",
+          "Focus on maintaining balance and control"
+        ],
+        isGoodForm: true
+      })
     };
   } catch (error) {
     console.error('Error:', error);
