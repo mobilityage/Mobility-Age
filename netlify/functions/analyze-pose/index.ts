@@ -4,16 +4,6 @@ const handler: Handler = async (event) => {
   console.log('Function started');
   
   try {
-    // Validate request
-    if (event.httpMethod !== 'POST') {
-      return {
-        statusCode: 405,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Method not allowed' })
-      };
-    }
-
-    // Check API key first
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.error('API key missing');
@@ -27,7 +17,6 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Parse request body
     if (!event.body) {
       return {
         statusCode: 400,
@@ -46,10 +35,8 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Ensure photo is properly formatted
-    const base64Image = photo.startsWith('data:image/') 
-      ? photo 
-      : `data:image/jpeg;base64,${photo}`;
+    // Format the base64 image properly for OpenAI
+    const base64ImageData = photo.replace(/^data:image\/[a-z]+;base64,/, '');
 
     console.log('Calling OpenAI API...');
 
@@ -71,7 +58,10 @@ const handler: Handler = async (event) => {
             content: [
               {
                 type: "image_url",
-                image_url: base64Image
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64ImageData}`,
+                  detail: "low"
+                }
               },
               {
                 type: "text",
@@ -122,8 +112,6 @@ const handler: Handler = async (event) => {
       recommendations: recommendations.length ? recommendations : ["Maintain proper form"],
       isGoodForm
     };
-
-    console.log('Analysis complete, returning result');
 
     return {
       statusCode: 200,
