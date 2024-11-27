@@ -17,13 +17,21 @@ export class AnalysisError extends Error {
 
 const parseContent = (content: string): AnalysisResult => {
   try {
-    // Extract mobility age
-    const ageMatch = content.match(/Age:\s*(\d+)/i);
-    const mobilityAge = ageMatch ? parseInt(ageMatch[1]) : 35;
+    console.log('Raw content to parse:', content);
 
-    // Extract feedback (first substantial paragraph after "Feedback:")
+    // Extract mobility age
+    const ageMatch = content.match(/Age:\s*(\d+)/i) || content.match(/Mobility Age:\s*(\d+)/i);
+    if (!ageMatch) {
+      throw new Error('Unable to find mobility age in response');
+    }
+    const mobilityAge = parseInt(ageMatch[1]);
+
+    // Extract feedback
     const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
     const feedback = feedbackMatch ? feedbackMatch[1].trim() : '';
+    if (!feedback) {
+      throw new Error('Unable to find feedback in response');
+    }
 
     // Extract recommendations
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*$)/i);
@@ -32,33 +40,31 @@ const parseContent = (content: string): AnalysisResult => {
           .split(/\n/)
           .map(line => line.replace(/^[-•*]\s*/, '').trim())
           .filter(line => line.length > 0)
-      : [];
+      : ['Maintain current form'];
 
     // Determine if form is good
     const isGoodForm = content.toLowerCase().includes('good form') || 
                       content.toLowerCase().includes('form: good');
 
-    const result = {
+    const result: AnalysisResult = {
       mobilityAge,
       feedback,
-      recommendations: recommendations.length ? recommendations : ['Maintain current form'],
+      recommendations,
       isGoodForm
     };
 
-    // Validate the parsed result
-    if (!result.feedback || result.feedback.length < 5) {
-      throw new Error('Invalid feedback parsed from response');
-    }
+    // Log the parsed result
+    console.log('Parsed result:', result);
 
     return result;
   } catch (error) {
-    console.error('Error parsing content:', error, '\nOriginal content:', content);
+    console.error('Error parsing content:', error);
+    console.error('Raw content:', content);
     throw new AnalysisError('Failed to parse analysis response');
   }
 };
 
 const handler: Handler = async (event) => {
-  // Add CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -66,13 +72,8 @@ const handler: Handler = async (event) => {
     'Content-Type': 'application/json'
   };
 
-  // Handle OPTIONS request
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers,
-      body: ''
-    };
+    return { statusCode: 204, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
@@ -98,20 +99,17 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an elite physiotherapist analyzing mobility poses. For each pose:
-1. Assess the form and technique
-2. Provide a mobility age (20-80 years)
-3. Give specific feedback on form
+    const systemPrompt = `You are an elite physiotherapist analyzing mobility poses. You must respond in exactly this format:
 
-Format your response exactly like this:
-
-Age: [number]
+Age: [number between 20-80]
 Form: [good/needs improvement]
-Feedback: [detailed feedback paragraph]
+Feedback: [2-3 sentences about their form]
 Recommendations:
-- [recommendation 1]
-- [recommendation 2]
-- [recommendation 3]`;
+- [specific improvement suggestion]
+- [specific improvement suggestion]
+- [specific improvement suggestion]
+
+Do not include any other text or deviate from this format.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -136,8 +134,7 @@ Recommendations:
           ]
         }
       ],
-      max_tokens: 1500,
-      temperature: 0.7
+      max_tokens: 1500
     });
 
     const content = completion.choices[0].message.content;
@@ -145,6 +142,7 @@ Recommendations:
       throw new AnalysisError('No content received from API');
     }
 
+    console.log('Raw API response:', content);
     const result = parseContent(content);
 
     return {
