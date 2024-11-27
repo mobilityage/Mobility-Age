@@ -2,9 +2,24 @@
 
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
-import { AnalysisResult, Exercise } from '../../src/types/assessment';
 
-export class AnalysisError extends Error {
+interface AnalysisResult {
+  mobilityAge: number;
+  feedback: string;
+  recommendations: string[];
+  isGoodForm: boolean;
+  exercises: {
+    name: string;
+    description: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    sets?: number;
+    reps?: number;
+    targetMuscles: string[];
+  }[];
+  poseName: string;
+}
+
+class AnalysisError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'AnalysisError';
@@ -12,60 +27,73 @@ export class AnalysisError extends Error {
 }
 
 const parseContent = (content: string, poseName: string): AnalysisResult => {
-  try {
-    console.log('Raw content to parse:', content);
+  console.log('Starting to parse content:', content);
 
+  // First check if we got an error message from GPT
+  if (content.toLowerCase().includes('sorry') || content.toLowerCase().includes('cannot')) {
+    throw new Error('GPT unable to analyze image: ' + content);
+  }
+
+  try {
     // Extract mobility age
-    const ageMatch = content.match(/Age:\s*(\d+)/i) || content.match(/Mobility Age:\s*(\d+)/i);
+    const ageMatch = content.match(/Age:\s*(\d+)/i);
     if (!ageMatch) {
-      throw new Error('Unable to find mobility age in response');
+      throw new Error('No mobility age found in response');
     }
     const mobilityAge = parseInt(ageMatch[1]);
 
+    // Extract form assessment
+    const isGoodForm = content.toLowerCase().includes('form: good') || 
+                      content.toLowerCase().includes('good form');
+
     // Extract feedback
     const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
-    const feedback = feedbackMatch ? feedbackMatch[1].trim() : '';
-    if (!feedback) {
-      throw new Error('Unable to find feedback in response');
+    if (!feedbackMatch) {
+      throw new Error('No feedback section found in response');
     }
+    const feedback = feedbackMatch[1].trim();
 
     // Extract recommendations
-    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*$)/i);
+    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:$|Exercise))/i);
     const recommendations = recommendationsMatch 
       ? recommendationsMatch[1]
-          .split(/\n/)
+          .split('\n')
           .map(line => line.replace(/^[-•*]\s*/, '').trim())
           .filter(line => line.length > 0)
       : ['Maintain current form'];
 
-    // Determine if form is good
-    const isGoodForm = content.toLowerCase().includes('good form') || 
-                      content.toLowerCase().includes('form: good');
-
-    // Create default exercise if none provided
-    const exercises: Exercise[] = [{
+    // Default exercise
+    const defaultExercise = {
       name: 'Form Practice',
-      description: 'Practice the current movement pattern with proper form',
-      difficulty: 'beginner',
+      description: 'Practice the movement with proper form',
+      difficulty: 'beginner' as const,
       targetMuscles: ['full body']
-    }];
+    };
+
+    console.log('Parsed result:', {
+      mobilityAge,
+      isGoodForm,
+      feedback: feedback.substring(0, 50) + '...',
+      recommendationsCount: recommendations.length
+    });
 
     return {
       mobilityAge,
       feedback,
       recommendations,
       isGoodForm,
-      exercises,
+      exercises: [defaultExercise],
       poseName
     };
   } catch (error) {
-    console.error('Error parsing content:', error);
+    console.error('Parse error:', error);
     console.error('Raw content:', content);
-    throw new AnalysisError('Failed to parse analysis response');
+    throw error;
   }
 };
 
 const handler: Handler = async (event) => {
+  // Add CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -78,10 +106,10 @@ const handler: Handler = async (event) => {
   }
 
   if (event.httpMethod !== 'POST') {
-    return { 
-      statusCode: 405, 
+    return {
+      statusCode: 405,
       headers,
-      body: JSON.stringify({ error: 'Method not allowed' }) 
+      body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
 
@@ -100,17 +128,15 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an elite physiotherapist analyzing mobility poses. You must respond in exactly this format:
+    const systemPrompt = `You are a physiotherapist analyzing a mobility pose. Respond EXACTLY in this format:
 
 Age: [number between 20-80]
 Form: [good/needs improvement]
 Feedback: [2-3 sentences about their form]
 Recommendations:
-- [specific improvement suggestion]
-- [specific improvement suggestion]
-- [specific improvement suggestion]
-
-Do not include any other text or deviate from this format.`;
+- [improvement 1]
+- [improvement 2]
+- [improvement 3]`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -124,7 +150,7 @@ Do not include any other text or deviate from this format.`;
           content: [
             {
               type: "text",
-              text: `Analyze this ${poseName} pose and provide a detailed mobility report.`
+              text: `Analyze this ${poseName} pose.`
             },
             {
               type: "image_url",
@@ -135,8 +161,10 @@ Do not include any other text or deviate from this format.`;
           ]
         }
       ],
-      max_tokens: 1500
+      max_tokens: 1000
     });
+
+    console.log('Received response from OpenAI');
 
     const content = completion.choices[0].message.content;
     if (!content) {
@@ -144,6 +172,7 @@ Do not include any other text or deviate from this format.`;
     }
 
     console.log('Raw API response:', content);
+
     const result = parseContent(content, poseName);
 
     return {
@@ -157,10 +186,10 @@ Do not include any other text or deviate from this format.`;
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Analysis failed',
         message: error instanceof AnalysisError ? error.message : 'Unknown error occurred',
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+        details: error instanceof Error ? error.message : undefined
       })
     };
   }
