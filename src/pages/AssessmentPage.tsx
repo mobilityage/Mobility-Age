@@ -1,3 +1,4 @@
+// src/pages/AssessmentPage.tsx
 import { useState } from 'react';
 import { MOBILITY_POSES } from '../types/assessment';
 import Camera from '@/components/Camera';
@@ -52,8 +53,9 @@ export default function AssessmentPage() {
       setAssessmentState('instructions');
       setCurrentAnalysis(null);
     } else {
-      const totalScore = analyses.reduce((sum, a) => sum + a.score, 0) / analyses.length;
-      alert(`Assessment complete! Average score: ${totalScore.toFixed(1)}`);
+      const totalScore = analyses.reduce((sum, a) => sum + a.mobilityAge, 0) / analyses.length;
+      // We'll replace this alert with a proper completion screen later
+      alert(`Assessment complete! Average mobility age: ${Math.round(totalScore)}`);
     }
   };
 
@@ -63,60 +65,80 @@ export default function AssessmentPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-4">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-2 text-center">
-          {currentPoseData.name}
-        </h2>
-        <p className="text-gray-600 mb-4">{currentPoseData.description}</p>
+    <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700">
+      {/* Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-purple-900">
+        <div 
+          className="h-full bg-purple-400 transition-all duration-500"
+          style={{ width: `${((currentPose + (assessmentState === 'analysis' ? 1 : 0)) / MOBILITY_POSES.length) * 100}%` }}
+        />
+      </div>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="mt-2 text-sm text-red-600 hover:text-red-800"
-            >
-              Try Again
-            </button>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Header Section */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Mobility Assessment
+          </h1>
+          <div className="flex items-center justify-center space-x-2 text-purple-200">
+            <span>Pose {currentPose + 1} of {MOBILITY_POSES.length}</span>
+            <span>•</span>
+            <span>{currentPoseData.name}</span>
           </div>
-        )}
+        </div>
 
-        {isLoading ? (
-          <div className="text-center py-8 bg-white rounded-lg shadow-md">
-            <div className="animate-pulse">
-              <div className="text-lg mb-2">Analyzing your form...</div>
-              <div className="text-sm text-gray-600">
-                Please wait while we process your photo
+        {/* Main Content */}
+        <div className="relative">
+          {error && (
+            <div className="absolute top-0 left-0 right-0 -mt-4 transform -translate-y-full">
+              <div className="bg-red-500/10 backdrop-blur-sm border border-red-500/20 rounded-lg p-4 text-red-200">
+                <p className="text-sm">{error}</p>
               </div>
             </div>
-          </div>
-        ) : (
-          <>
-            {assessmentState === 'instructions' && (
-              <PoseInstructions 
-                poseData={currentPoseData}
-                onStartPose={handleStartPose}
-              />
-            )}
-            {assessmentState === 'camera' && (
-              <Camera onPhotoTaken={handlePhotoTaken} />
-            )}
-            {assessmentState === 'analysis' && currentAnalysis && (
-              <PoseFeedback
-                analysis={currentAnalysis}
-                onContinue={handleContinue}
-                onRetry={handleRetry}
-              />
-            )}
-          </>
-        )}
-
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <p>Pose {currentPose + 1} of {MOBILITY_POSES.length}</p>
-          {photos.length > 0 && (
-            <p className="mt-1">{photos.length} poses analyzed</p>
           )}
+
+          {isLoading ? (
+            <div className="bg-purple-900/20 backdrop-blur-sm rounded-2xl p-12 text-center border border-purple-300/20">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mb-4"></div>
+              <p className="text-xl text-white font-medium">Analyzing your form...</p>
+              <p className="text-purple-200 mt-2">This will take just a moment</p>
+            </div>
+          ) : (
+            <div className="transition-all duration-500 transform">
+              {assessmentState === 'instructions' && (
+                <PoseInstructions 
+                  poseData={currentPoseData}
+                  onStartPose={handleStartPose}
+                />
+              )}
+              {assessmentState === 'camera' && (
+                <Camera onPhotoTaken={handlePhotoTaken} />
+              )}
+              {assessmentState === 'analysis' && currentAnalysis && (
+                <PoseFeedback
+                  analysis={currentAnalysis}
+                  onContinue={handleContinue}
+                  onRetry={handleRetry}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Progress Indicators */}
+        <div className="mt-8 flex justify-center space-x-2">
+          {MOBILITY_POSES.map((_, index) => (
+            <div
+              key={index}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                index < currentPose 
+                  ? 'bg-purple-400' 
+                  : index === currentPose
+                    ? 'bg-white w-4'
+                    : 'bg-purple-700'
+              }`}
+            />
+          ))}
         </div>
       </div>
     </div>
