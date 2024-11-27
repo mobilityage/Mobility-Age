@@ -103,7 +103,7 @@ Both exercises should directly address limitations observed in the pose assessme
           ],
         },
       ],
-      max_tokens: 500
+      max_tokens: 1000
     });
 
     console.log('Raw API response:', completion.choices[0].message.content);
