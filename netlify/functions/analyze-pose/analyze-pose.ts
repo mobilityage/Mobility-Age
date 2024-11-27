@@ -1,12 +1,8 @@
+// netlify/functions/analyze-pose.ts
+
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
-
-export interface AnalysisResult {
-  mobilityAge: number;
-  feedback: string;
-  recommendations: string[];
-  isGoodForm: boolean;
-}
+import { AnalysisResult, Exercise } from '../../src/types/assessment';
 
 export class AnalysisError extends Error {
   constructor(message: string) {
@@ -15,7 +11,7 @@ export class AnalysisError extends Error {
   }
 }
 
-const parseContent = (content: string): AnalysisResult => {
+const parseContent = (content: string, poseName: string): AnalysisResult => {
   try {
     console.log('Raw content to parse:', content);
 
@@ -46,17 +42,22 @@ const parseContent = (content: string): AnalysisResult => {
     const isGoodForm = content.toLowerCase().includes('good form') || 
                       content.toLowerCase().includes('form: good');
 
-    const result: AnalysisResult = {
+    // Create default exercise if none provided
+    const exercises: Exercise[] = [{
+      name: 'Form Practice',
+      description: 'Practice the current movement pattern with proper form',
+      difficulty: 'beginner',
+      targetMuscles: ['full body']
+    }];
+
+    return {
       mobilityAge,
       feedback,
       recommendations,
-      isGoodForm
+      isGoodForm,
+      exercises,
+      poseName
     };
-
-    // Log the parsed result
-    console.log('Parsed result:', result);
-
-    return result;
   } catch (error) {
     console.error('Error parsing content:', error);
     console.error('Raw content:', content);
@@ -143,7 +144,7 @@ Do not include any other text or deviate from this format.`;
     }
 
     console.log('Raw API response:', content);
-    const result = parseContent(content);
+    const result = parseContent(content, poseName);
 
     return {
       statusCode: 200,
