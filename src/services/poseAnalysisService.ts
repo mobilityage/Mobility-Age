@@ -1,6 +1,6 @@
 // src/services/poseAnalysisService.ts
 
-import { AnalysisResult, PoseAnalysis, Exercise } from '../types/assessment';
+import type { AnalysisResult, PoseAnalysis } from '../types/assessment';
 
 export class AnalysisError extends Error {
   constructor(message: string) {
@@ -42,7 +42,6 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
       throw new AnalysisError('Invalid response format from server');
     }
 
-    // Ensure poseName is included in the result
     return {
       ...result,
       poseName: data.poseName,
@@ -69,4 +68,4 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
   );
 }
 
-export { AnalysisResult, PoseAnalysis, Exercise };
+export type { AnalysisResult, PoseAnalysis };
