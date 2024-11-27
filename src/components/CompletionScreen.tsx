@@ -1,15 +1,11 @@
 // src/components/CompletionScreen.tsx
 
-import { Exercise } from '../services/poseAnalysisService';
+import type { Exercise } from '../types/assessment';
+import type { AnalysisResult } from '../types/assessment';
 
 interface CompletionScreenProps {
   averageAge: number;
-  analyses: {
-    poseName: string;
-    mobilityAge: number;
-    feedback: string;
-    exercises: Exercise[];
-  }[];
+  analyses: AnalysisResult[];
   onRestart: () => void;
 }
 
@@ -22,14 +18,14 @@ export function CompletionScreen({ averageAge, analyses, onRestart }: Completion
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
       </div>
 
-      <div className="relative p-8">
-        <div className="mb-8 text-center">
+      <div className="relative p-8 text-center">
+        <div className="mb-8">
           <h2 className="text-3xl font-bold text-white mb-2">Assessment Complete!</h2>
           <p className="text-purple-200">Here's your mobility analysis</p>
         </div>
 
         {/* Age Display */}
-        <div className="mb-12 text-center">
+        <div className="mb-12">
           <div className="inline-block rounded-full p-1 bg-gradient-to-r from-purple-500 to-blue-500">
             <div className="bg-purple-900 rounded-full p-8">
               <div className="text-5xl font-bold text-white mb-2">
@@ -41,60 +37,45 @@ export function CompletionScreen({ averageAge, analyses, onRestart }: Completion
         </div>
 
         {/* Pose Breakdown */}
-        <div className="space-y-8 mb-8">
+        <div className="grid gap-4 mb-8">
           {analyses.map((analysis, index) => (
-            <div key={index} className="bg-purple-800/20 rounded-lg p-6 space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-purple-200">{analysis.poseName}</span>
-                  <span className="text-white font-medium">Age {analysis.mobilityAge}</span>
-                </div>
-                <div className="h-1.5 bg-purple-900/40 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-purple-400 to-blue-400"
-                    style={{ width: `${Math.max(0, 100 - analysis.mobilityAge)}%` }}
-                  />
-                </div>
+            <div key={index} className="bg-purple-800/20 rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-purple-200">{analysis.poseName}</span>
+                <span className="text-white font-medium">Age {analysis.mobilityAge}</span>
+              </div>
+              <div className="mt-2 h-1.5 bg-purple-900/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-400 to-blue-400"
+                  style={{ width: `${Math.max(0, 100 - analysis.mobilityAge)}%` }}
+                />
               </div>
 
               {/* Exercise Recommendations */}
-              {analysis.exercises.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-white font-medium">Recommended Exercises:</h4>
-                  <div className="grid gap-3">
-                    {analysis.exercises.map((exercise, idx) => (
-                      <div key={idx} className="bg-purple-900/30 rounded-lg p-4 border border-purple-300/10">
-                        <div className="flex justify-between items-start mb-2">
-                          <h5 className="text-white font-medium">{exercise.name}</h5>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            exercise.difficulty === 'beginner' ? 'bg-green-400/20 text-green-200' :
-                            exercise.difficulty === 'intermediate' ? 'bg-yellow-400/20 text-yellow-200' :
-                            'bg-red-400/20 text-red-200'
-                          }`}>
-                            {exercise.difficulty}
-                          </span>
-                        </div>
-                        <p className="text-purple-200 text-sm mb-2">{exercise.description}</p>
-                        <div className="flex flex-wrap gap-2 text-sm">
-                          {exercise.sets && exercise.reps && (
-                            <span className="text-purple-200">
-                              {exercise.sets} sets × {exercise.reps} reps
-                            </span>
-                          )}
-                          <div className="flex flex-wrap gap-1">
-                            {exercise.targetMuscles.map((muscle, midx) => (
-                              <span 
-                                key={midx}
-                                className="px-2 py-1 bg-purple-800/30 rounded-full text-purple-200 text-xs"
-                              >
-                                {muscle}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+              {analysis.exercises && analysis.exercises.length > 0 && (
+                <div className="mt-4">
+                  {analysis.exercises.map((exercise, exerciseIndex) => (
+                    <div key={exerciseIndex} className="mt-2 text-sm">
+                      <div className="flex justify-between items-start text-purple-200">
+                        <span>{exercise.name}</span>
+                        <span className="text-xs bg-purple-700/50 px-2 py-1 rounded-full">
+                          {exercise.difficulty}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      {exercise.targetMuscles && exercise.targetMuscles.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {exercise.targetMuscles.map((muscle: string, muscleIndex: number) => (
+                            <span 
+                              key={muscleIndex}
+                              className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
+                            >
+                              {muscle}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
