@@ -2,12 +2,22 @@ import { Handler } from '@netlify/functions';
 import OpenAI from "openai";
 
 const handler: Handler = async (event) => {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
+  }
+
   console.log('Function started');
   
   try {
-    // Initialize OpenAI with environment variable API key
-    const openai = new OpenAI();
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('API key not configured');
+    }
 
+    const openai = new OpenAI();
     const { photo, poseName, poseDescription } = JSON.parse(event.body || '{}');
 
     if (!photo || !poseName) {
@@ -31,7 +41,7 @@ Assess the alignment of the spine, hips, knees, and ankles. Note any deviations 
 Joint Positioning:
 Evaluate the positioning of key joints (shoulders, hips, knees, and ankles) in the pose. Identify any signs of stiffness or restricted range of motion.
 Balance and Stability:
-Assess the individual’s balance and stability as depicted in the image. Does the pose suggest a stable base of support?
+Assess the individual's balance and stability as depicted in the image. Does the pose suggest a stable base of support?
 Overall Mobility Age:
 Based on your analysis, estimate a "mobility age" for the individual, reflecting their mobility and physical capabilities compared to normative data for different age groups.
 Provide your feedback clearly and constructively, while acknowledging the limitations of assessing mobility from a still image.` 
@@ -49,18 +59,24 @@ Provide your feedback clearly and constructively, while acknowledging the limita
     });
 
     console.log('OpenAI response received');
-    const content = completion.choices[0].message.content;
+    
+    // More robust response parsing
+    const content = completion.choices[0].message.content || '';
+    const scoreMatch = content.match(/\d+(?=\s*\/\s*100|\s*out of\s*100|\s*percent|\%)?/);
+    const score = scoreMatch ? Math.min(parseInt(scoreMatch[0]), 100) : 75;
+    
+    // Get first complete sentence for feedback
+    const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
+    const feedback = sentences[0] || 'Analysis completed.';
 
-    // Parse the response
-    const score = parseInt(content.match(/\d+(?=\s*\/\s*100|\s*out of\s*100)?/)?.[0] || "75");
-    const feedback = content.split('.')[0] + '.';
-    const recommendations = content
-      .split(/[.!?]/)
-      .filter(s => /should|recommend|try|improve/i.test(s))
+    // Extract recommendations more reliably
+    const recommendations = sentences
+      .filter(s => /should|recommend|try|improve|can|could/i.test(s))
       .map(s => s.trim())
-      .filter(s => s.length > 0)
+      .filter(s => s.length > 10 && s.length < 100)
       .slice(0, 3);
-    const isGoodForm = /acceptable|good|correct|proper|yes/i.test(content);
+
+    const isGoodForm = /excellent|good|proper|correct|well|perfect|great/i.test(content.toLowerCase());
 
     return {
       statusCode: 200,
@@ -81,7 +97,7 @@ Provide your feedback clearly and constructively, while acknowledging the limita
       body: JSON.stringify({ 
         error: 'Analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
-        details: error instanceof Error ? error.stack : undefined
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
       })
     };
   }
