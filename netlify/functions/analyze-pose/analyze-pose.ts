@@ -33,8 +33,22 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
     // Extract mobility age
     const ageMatch = content.match(/Age:\s*(\d+)/i);
     if (!ageMatch) {
-      throw new Error('No mobility age found in response');
+      console.log('Failed to find age in:', content);
+      return {
+        mobilityAge: 30,
+        feedback: "Unable to determine specific feedback from the pose.",
+        recommendations: ["Consult with a physiotherapist for proper form assessment"],
+        isGoodForm: false,
+        exercises: [{
+          name: 'Basic Form Practice',
+          description: 'Practice the basic movement pattern',
+          difficulty: 'beginner',
+          targetMuscles: ['full body']
+        }],
+        poseName
+      };
     }
+
     const mobilityAge = parseInt(ageMatch[1]);
 
     // Extract form assessment
@@ -43,10 +57,7 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
 
     // Extract feedback
     const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
-    if (!feedbackMatch) {
-      throw new Error('No feedback section found in response');
-    }
-    const feedback = feedbackMatch[1].trim();
+    const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
 
     // Extract recommendations
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:$|Exercise))/i);
@@ -55,7 +66,7 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
           .split('\n')
           .map(line => line.replace(/^[-•*]\s*/, '').trim())
           .filter(line => line.length > 0)
-      : ['Maintain current form'];
+      : ['Practice proper form'];
 
     // Default exercise
     const defaultExercise = {
@@ -76,7 +87,20 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
   } catch (error) {
     console.error('Parse error:', error);
     console.error('Raw content:', content);
-    throw error;
+    // Return default values instead of throwing
+    return {
+      mobilityAge: 30,
+      feedback: "Unable to analyze the pose properly.",
+      recommendations: ["Consult with a physiotherapist for proper form assessment"],
+      isGoodForm: false,
+      exercises: [{
+        name: 'Basic Form Practice',
+        description: 'Practice the basic movement pattern',
+        difficulty: 'beginner',
+        targetMuscles: ['full body']
+      }],
+      poseName
+    };
   }
 };
 
@@ -107,18 +131,18 @@ const handler: Handler = async (event) => {
     }
 
     const openai = new OpenAI({ apiKey });
-    const { photo, poseName } = JSON.parse(event.body || '{}');
+    let { photo, poseName } = JSON.parse(event.body || '{}');
 
     if (!photo || !poseName) {
       throw new AnalysisError('Missing required fields: photo or poseName');
     }
 
-    console.log('Starting analysis for:', poseName);
+    // Remove data:image prefix if it exists
+    if (photo.startsWith('data:image')) {
+      photo = photo.split(',')[1];
+    }
 
-    // Ensure the base64 image data is properly formatted
-    const base64Image = photo.startsWith('data:image') 
-      ? photo 
-      : `data:image/jpeg;base64,${photo}`;
+    console.log('Starting analysis for:', poseName);
 
     const systemPrompt = `You are a physiotherapist analyzing a mobility pose. Respond EXACTLY in this format:
 
@@ -146,7 +170,9 @@ Recommendations:
             },
             {
               type: "image_url",
-              image_url: base64Image
+              image_url: {
+                url: `data:image/jpeg;base64,${photo}`
+              }
             }
           ]
         }
@@ -156,7 +182,7 @@ Recommendations:
 
     console.log('Received response from OpenAI');
 
-    const content = completion.choices[0].message.content;
+    const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new AnalysisError('No content received from API');
     }
@@ -173,14 +199,19 @@ Recommendations:
 
   } catch (error) {
     console.error('Function error:', error);
+    // Provide more detailed error information
+    const errorResponse = {
+      error: 'Analysis failed',
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
+      details: error instanceof Error ? error.stack : undefined,
+      // Include the original error for debugging
+      originalError: process.env.NODE_ENV === 'development' ? error : undefined
+    };
+
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        error: 'Analysis failed',
-        message: error instanceof AnalysisError ? error.message : 'Unknown error occurred',
-        details: error instanceof Error ? error.message : undefined
-      })
+      body: JSON.stringify(errorResponse)
     };
   }
 };
