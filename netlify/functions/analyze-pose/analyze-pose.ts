@@ -28,9 +28,10 @@ export class AnalysisError extends Error {
 
 const parseContent = (content: string, poseName: string): AnalysisResult => {
   try {
-    console.log('Parsing content:', content); // Debug log
-
+    console.log('Parsing content:', content);
     const lines = content.split('\n');
+    console.log('Content lines:', lines.map(line => line.trim()).filter(Boolean));
+
     const result: Partial<AnalysisResult> = {
       recommendations: [],
       exercises: [],
@@ -45,11 +46,16 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       
       if (!trimmed) continue;
 
+      console.log('Processing line:', trimmed); // Debug log
+
       // Try to parse mobility age
       if (trimmed.toLowerCase().includes('mobility_age')) {
         const match = trimmed.match(/\d+/);
         if (match) {
           result.mobilityAge = parseInt(match[0]);
+          console.log('Found mobility age:', result.mobilityAge);
+        } else {
+          console.log('Failed to extract number from mobility age line:', trimmed);
         }
         continue;
       }
@@ -57,20 +63,24 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       // Try to parse good form
       if (trimmed.toLowerCase().includes('good_form')) {
         result.isGoodForm = trimmed.toLowerCase().includes('true');
+        console.log('Found good form:', result.isGoodForm);
         continue;
       }
 
       // Identify sections
       if (trimmed.toLowerCase().startsWith('feedback:')) {
         currentSection = 'feedback';
+        console.log('Entering feedback section');
         continue;
       }
       if (trimmed.toLowerCase().startsWith('recommendations:')) {
         currentSection = 'recommendations';
+        console.log('Entering recommendations section');
         continue;
       }
       if (trimmed.toLowerCase().startsWith('exercises:')) {
         currentSection = 'exercises';
+        console.log('Entering exercises section');
         continue;
       }
 
@@ -78,10 +88,12 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       switch (currentSection) {
         case 'feedback':
           result.feedback += (result.feedback ? ' ' : '') + trimmed;
+          console.log('Added feedback:', trimmed);
           break;
         case 'recommendations':
           if (!trimmed.startsWith('-') && !trimmed.toLowerCase().includes('recommendations')) {
             result.recommendations?.push(trimmed);
+            console.log('Added recommendation:', trimmed);
           }
           break;
         case 'exercises':
@@ -107,6 +119,7 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
               };
 
               result.exercises?.push(exercise);
+              console.log('Added exercise:', exercise);
             } catch (error) {
               console.error('Error parsing exercise:', trimmed, error);
             }
@@ -114,6 +127,8 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
           break;
       }
     }
+
+    console.log('Final result before validation:', result);
 
     // Validate required fields with better error messages
     if (result.mobilityAge === undefined) {
@@ -167,29 +182,24 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an elite physiotherapist and mobility expert. Analyze the provided pose image and provide a detailed assessment including:
+    const systemPrompt = `You are an elite physiotherapist and mobility expert. You must respond in exactly this format using these exact labels:
 
-1. Overall mobility score as an equivalent "mobility age" (where younger is better)
-2. Whether the form is good enough to proceed
-3. Detailed feedback on form and alignment
-4. Specific recommendations for improvement
-5. 2-3 targeted exercises to improve this specific movement, including:
-   - Exercise name
-   - Clear description
-   - Difficulty level (beginner/intermediate/advanced)
-   - Recommended sets and reps
-   - Target muscle groups
-
-Format your response exactly as follows:
-
-MOBILITY_AGE: [age]
-GOOD_FORM: [true/false]
-FEEDBACK: [detailed feedback]
+MOBILITY_AGE: [number between 20-80]
+GOOD_FORM: [true or false]
+FEEDBACK: [2-3 sentences about their form]
 RECOMMENDATIONS:
-[recommendation 1]
-[recommendation 2]
+[single line recommendation 1]
+[single line recommendation 2]
 EXERCISES:
-[name]|[description]|[difficulty]|[sets]x[reps]|[target muscles]`;
+[exercise name]|[2-3 sentence description]|[beginner or intermediate or advanced]|[sets]x[reps]|[muscle1, muscle2]
+[exercise name]|[2-3 sentence description]|[beginner or intermediate or advanced]|[sets]x[reps]|[muscle1, muscle2]
+
+Important:
+- MOBILITY_AGE must be a number
+- GOOD_FORM must be true or false
+- Each exercise must follow the exact format with | separators
+- Don't add any additional text or labels
+- Don't deviate from this format`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -211,7 +221,7 @@ EXERCISES:
       throw new AnalysisError('No content received from API');
     }
 
-    console.log('Raw API response:', content); // Debug log
+    console.log('Raw API response:', content);
 
     const result = parseContent(content, poseName);
 
