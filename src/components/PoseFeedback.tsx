@@ -1,3 +1,11 @@
+import { AnalysisResult } from '../services/poseAnalysisService';
+
+interface PoseFeedbackProps {
+  analysis: AnalysisResult;
+  onContinue: () => void;
+  onRetry: () => void;
+}
+
 export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProps) {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -38,7 +46,7 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
             <div className="space-y-3">
               <h4 className="font-semibold text-gray-900">Recommended Improvements:</h4>
               <ul className="space-y-2">
-                {analysis.recommendations.map((rec, index) => (
+                {analysis.recommendations.map((rec: string, index: number) => (
                   <li key={index} className="flex items-start">
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm mr-2 mt-0.5">
                       {index + 1}
