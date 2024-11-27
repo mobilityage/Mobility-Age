@@ -3,10 +3,7 @@ import OpenAI from "openai";
 
 const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   console.log('Function started');
@@ -34,17 +31,24 @@ const handler: Handler = async (event) => {
           content: [
             { 
               type: "text", 
-              text: `You are a physiotherapist specializing in mobility assessment. Analyze the provided still image of a person performing a mobility pose. Provide feedback on the following aspects:
+              text: `Act as an experienced physiotherapist analyzing a patient performing the ${poseName} pose. 
+              
+1. Form Analysis: 
+- Evaluate the patient's posture, alignment, and technique
+- Note any visible limitations in flexibility or mobility
+- Be specific about joint angles and positions
 
-Posture and Alignment:
-Assess the alignment of the spine, hips, knees, and ankles. Note any deviations from optimal posture.
-Joint Positioning:
-Evaluate the positioning of key joints (shoulders, hips, knees, and ankles) in the pose. Identify any signs of stiffness or restricted range of motion.
-Balance and Stability:
-Assess the individual's balance and stability as depicted in the image. Does the pose suggest a stable base of support?
-Overall Mobility Age:
-Based on your analysis, estimate a "mobility age" for the individual, reflecting their mobility and physical capabilities compared to normative data for different age groups.
-Provide your feedback clearly and constructively, while acknowledging the limitations of assessing mobility from a still image.` 
+2. Mobility Age Assessment: 
+- Provide a specific mobility age (as a number)
+- Explain what aspects influenced this age assessment
+- Note which elements suggest younger or older mobility patterns
+
+3. Improvement Plan:
+- Suggest 2 specific exercises or stretches that could improve their mobility age
+- Include clear instructions for performing each exercise
+- Specify repetitions or duration for optimal results
+
+Ensure the mobility age is clearly stated as a number. Be precise, objective, and actionable in your analysis.`
             },
             {
               type: "image_url",
@@ -60,31 +64,40 @@ Provide your feedback clearly and constructively, while acknowledging the limita
 
     console.log('OpenAI response received');
     
-    // More robust response parsing
     const content = completion.choices[0].message.content || '';
-    const scoreMatch = content.match(/\d+(?=\s*\/\s*100|\s*out of\s*100|\s*percent|\%)?/);
-    const score = scoreMatch ? Math.min(parseInt(scoreMatch[0]), 100) : 75;
     
-    // Get first complete sentence for feedback
+    // Extract mobility age - look for numbers in the Mobility Age section
+    const mobilitySection = content.split('Mobility Age Assessment:')[1]?.split('Improvement Plan:')[0] || '';
+    const ageMatch = mobilitySection.match(/\d+(?:\.\d+)?/);
+    const mobilityAge = ageMatch ? Math.min(parseInt(ageMatch[0]), 100) : 30;
+    
+    // Extract main feedback - first relevant sentence from Form Analysis
     const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
-    const feedback = sentences[0] || 'Analysis completed.';
+    const formAnalysisSentences = sentences.filter(s => 
+      !s.includes('Mobility Age') && 
+      !s.includes('exercise') && 
+      !s.includes('stretch')
+    );
+    const feedback = formAnalysisSentences[0] || 'Analysis completed.';
 
-    // Extract recommendations more reliably
-    const recommendations = sentences
-      .filter(s => /should|recommend|try|improve|can|could/i.test(s))
+    // Extract recommendations from Improvement Plan section
+    const improvementSection = content.split('Improvement Plan:')[1] || '';
+    const recommendations = improvementSection
+      .split(/\d+\.|\n-/)
       .map(s => s.trim())
       .filter(s => s.length > 10 && s.length < 100)
-      .slice(0, 3);
+      .slice(0, 2);
 
-    const isGoodForm = /excellent|good|proper|correct|well|perfect|great/i.test(content.toLowerCase());
+    // Determine if form is good based on mobility age comparison with actual age
+    const isGoodForm = mobilityAge <= 30;
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        score,
+        mobilityAge,
         feedback,
-        recommendations: recommendations.length ? recommendations : ["Maintain proper form"],
+        recommendations: recommendations.length ? recommendations : ["Perform mobility exercises regularly"],
         isGoodForm
       })
     };
