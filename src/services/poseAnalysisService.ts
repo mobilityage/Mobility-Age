@@ -5,7 +5,7 @@ export interface PoseAnalysis {
 }
 
 export interface AnalysisResult {
-  score: number;
+  mobilityAge: number;
   feedback: string;
   recommendations: string[];
   isGoodForm: boolean;
