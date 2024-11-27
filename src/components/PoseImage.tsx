@@ -5,14 +5,21 @@ interface PoseImageProps {
 
 export function PoseImage({ src, name }: PoseImageProps) {
   return (
-    <div className="relative aspect-w-4 aspect-h-3 mb-4 overflow-hidden rounded-lg">
+    <div className="relative aspect-video rounded-xl overflow-hidden
+                    border border-purple-300/20 shadow-lg">
       <img 
         src={src} 
         alt={`Reference pose for ${name}`}
-        className="object-cover w-full h-full rounded-lg shadow-sm"
+        className="w-full h-full object-cover"
       />
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-2">
-        <p className="text-white text-sm text-center">Reference pose</p>
+      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 via-transparent to-transparent">
+        <div className="absolute bottom-4 left-4">
+          <span className="px-3 py-1 bg-purple-900/60 backdrop-blur-sm 
+                         rounded-full text-sm text-purple-100 
+                         border border-purple-300/20">
+            Reference Pose
+          </span>
+        </div>
       </div>
     </div>
   );
