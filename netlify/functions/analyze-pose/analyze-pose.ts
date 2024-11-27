@@ -26,55 +26,124 @@ export class AnalysisError extends Error {
   }
 }
 
-const parseContent = (content: string): AnalysisResult => {
+const parseContent = (content: string, poseName: string): AnalysisResult => {
   try {
+    console.log('Parsing content:', content); // Debug log
+
     const lines = content.split('\n');
-    let currentSection = '';
     const result: Partial<AnalysisResult> = {
       recommendations: [],
-      exercises: []
+      exercises: [],
+      feedback: '',
+      poseName: poseName
     };
+
+    let currentSection = '';
 
     for (const line of lines) {
       const trimmed = line.trim();
       
-      if (trimmed.startsWith('MOBILITY_AGE:')) {
-        result.mobilityAge = parseInt(trimmed.split(':')[1]);
-      } else if (trimmed.startsWith('GOOD_FORM:')) {
-        result.isGoodForm = trimmed.split(':')[1].trim().toLowerCase() === 'true';
-      } else if (trimmed.startsWith('FEEDBACK:')) {
+      if (!trimmed) continue;
+
+      // Try to parse mobility age
+      if (trimmed.toLowerCase().includes('mobility_age')) {
+        const match = trimmed.match(/\d+/);
+        if (match) {
+          result.mobilityAge = parseInt(match[0]);
+        }
+        continue;
+      }
+
+      // Try to parse good form
+      if (trimmed.toLowerCase().includes('good_form')) {
+        result.isGoodForm = trimmed.toLowerCase().includes('true');
+        continue;
+      }
+
+      // Identify sections
+      if (trimmed.toLowerCase().startsWith('feedback:')) {
         currentSection = 'feedback';
-        result.feedback = '';
-      } else if (trimmed.startsWith('RECOMMENDATIONS:')) {
+        continue;
+      }
+      if (trimmed.toLowerCase().startsWith('recommendations:')) {
         currentSection = 'recommendations';
-      } else if (trimmed.startsWith('EXERCISES:')) {
+        continue;
+      }
+      if (trimmed.toLowerCase().startsWith('exercises:')) {
         currentSection = 'exercises';
-      } else if (trimmed && currentSection === 'feedback') {
-        result.feedback = (result.feedback || '') + trimmed;
-      } else if (trimmed && currentSection === 'recommendations' && !trimmed.startsWith('-')) {
-        result.recommendations?.push(trimmed);
-      } else if (trimmed && currentSection === 'exercises' && trimmed.includes('|')) {
-        const [name, description, difficulty, setsReps, muscles] = trimmed.split('|').map(s => s.trim());
-        const [sets, reps] = setsReps.split('x').map(n => parseInt(n));
-        result.exercises?.push({
-          name,
-          description,
-          difficulty: difficulty as 'beginner' | 'intermediate' | 'advanced',
-          sets,
-          reps,
-          targetMuscles: muscles.split(',').map(m => m.trim())
-        });
+        continue;
+      }
+
+      // Parse content based on current section
+      switch (currentSection) {
+        case 'feedback':
+          result.feedback += (result.feedback ? ' ' : '') + trimmed;
+          break;
+        case 'recommendations':
+          if (!trimmed.startsWith('-') && !trimmed.toLowerCase().includes('recommendations')) {
+            result.recommendations?.push(trimmed);
+          }
+          break;
+        case 'exercises':
+          if (trimmed.includes('|')) {
+            try {
+              const [name, description, difficulty, setsReps, muscles] = trimmed.split('|').map(s => s.trim());
+              let sets = undefined;
+              let reps = undefined;
+              
+              if (setsReps) {
+                const [s, r] = setsReps.split('x').map(n => parseInt(n));
+                if (!isNaN(s)) sets = s;
+                if (!isNaN(r)) reps = r;
+              }
+
+              const exercise: Exercise = {
+                name,
+                description,
+                difficulty: (difficulty?.toLowerCase() as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
+                sets,
+                reps,
+                targetMuscles: muscles ? muscles.split(',').map(m => m.trim()) : []
+              };
+
+              result.exercises?.push(exercise);
+            } catch (error) {
+              console.error('Error parsing exercise:', trimmed, error);
+            }
+          }
+          break;
       }
     }
 
-    if (!result.mobilityAge || !result.feedback || !result.isGoodForm === undefined) {
-      throw new Error('Missing required fields in analysis result');
+    // Validate required fields with better error messages
+    if (result.mobilityAge === undefined) {
+      throw new Error('Missing mobility age in analysis result');
+    }
+    if (!result.feedback) {
+      throw new Error('Missing feedback in analysis result');
+    }
+    if (result.isGoodForm === undefined) {
+      throw new Error('Missing good form indicator in analysis result');
+    }
+    if (!result.recommendations?.length) {
+      console.warn('No recommendations provided');
+      result.recommendations = ['Focus on maintaining proper form'];
+    }
+    if (!result.exercises?.length) {
+      console.warn('No exercises provided');
+      result.exercises = [{
+        name: 'Basic Mobility Exercise',
+        description: 'Practice the movement with proper form',
+        difficulty: 'beginner',
+        targetMuscles: ['full body']
+      }];
     }
 
     return result as AnalysisResult;
   } catch (error) {
     console.error('Error parsing content:', error);
-    throw new AnalysisError('Failed to parse analysis result');
+    console.error('Raw content:', content);
+    throw new AnalysisError(`Failed to parse analysis result: ${error.message}`);
   }
 };
 
@@ -142,8 +211,9 @@ EXERCISES:
       throw new AnalysisError('No content received from API');
     }
 
-    const result = parseContent(content);
-    result.poseName = poseName;
+    console.log('Raw API response:', content); // Debug log
+
+    const result = parseContent(content, poseName);
 
     return {
       statusCode: 200,
