@@ -1,12 +1,46 @@
 import { Handler } from '@netlify/functions';
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 
-// ... [previous interface and error class definitions remain the same]
+export interface AnalysisResult {
+  mobilityAge: number;
+  feedback: string;
+  recommendations: string[];
+  isGoodForm: boolean;
+}
+
+export interface PoseAnalysis {
+  photo: string;
+  poseName: string;
+  poseDescription: string;
+}
+
+export class AnalysisError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AnalysisError';
+  }
+}
 
 const handler: Handler = async (event) => {
-  // ... [previous validation logic remains the same]
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
 
   try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('API key not configured');
+    }
+
+    const openai = new OpenAI({ apiKey: apiKey });
+    const { photo, poseName, poseDescription } = JSON.parse(event.body || '{}');
+
+    if (!photo || !poseName) {
+      throw new Error('Missing required fields');
+    }
+
+    console.log('Making OpenAI request for:', poseName);
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
