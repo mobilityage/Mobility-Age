@@ -12,7 +12,88 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   const [countdown, setCountdown] = useState(5);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
-  // ... [rest of the state management and camera functions remain the same]
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setIsStreaming(true);
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setError("Unable to access camera. Please ensure you've granted camera permissions.");
+    }
+  };
+
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [facingMode]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined;
+    
+    if (isCountingDown && countdown > 0) {
+      intervalId = setInterval(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      handleTakePhoto();
+      setIsCountingDown(false);
+      setCountdown(5);
+    }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isCountingDown, countdown]);
+
+  const handleToggleCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const handleStartCountdown = () => {
+    setIsCountingDown(true);
+  };
+
+  const handleTakePhoto = () => {
+    if (!videoRef.current) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    
+    const context = canvas.getContext('2d');
+    if (context) {
+      if (facingMode === 'user') {
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+      }
+      context.drawImage(videoRef.current, 0, 0);
+      const photoData = canvas.toDataURL('image/jpeg', 0.8);
+      onPhotoTaken(photoData);
+
+      const tracks = (videoRef.current.srcObject as MediaStream)?.getTracks();
+      tracks?.forEach(track => track.stop());
+    }
+  };
 
   if (error) {
     return (
@@ -34,7 +115,6 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4">
-      {/* Container for Instructions */}
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-semibold text-white mb-2">Capture Your Pose</h2>
         <p className="text-purple-200 text-sm">
@@ -42,10 +122,8 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
         </p>
       </div>
 
-      {/* Camera Container */}
       <div className="relative rounded-2xl overflow-hidden bg-purple-900/20 backdrop-blur-sm
                     border border-purple-300/20 shadow-xl">
-        {/* Aspect ratio container */}
         <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
           <video
             ref={videoRef}
@@ -57,15 +135,13 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
             onLoadedMetadata={() => setIsStreaming(true)}
           />
           
-          {/* Camera UI Overlay */}
           {isStreaming && !isCountingDown && (
             <div className="absolute inset-0 flex flex-col items-center justify-end
                          bg-gradient-to-t from-black/70 via-transparent to-transparent">
               <div className="w-full p-4 space-y-4">
-                {/* Camera Controls */}
                 <div className="flex justify-center items-center space-x-4">
                   <button
-                    onClick={toggleCamera}
+                    onClick={handleToggleCamera}
                     className="p-4 bg-white/10 backdrop-blur-sm text-white rounded-full
                              hover:bg-white/20 transition-all duration-300 
                              shadow-lg border border-white/20"
@@ -74,7 +150,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
                     ⟲
                   </button>
                   <button
-                    onClick={startCountdown}
+                    onClick={handleStartCountdown}
                     className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-full
                              hover:bg-white/20 transition-all duration-300
                              shadow-lg border border-white/20
@@ -87,7 +163,6 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
             </div>
           )}
 
-          {/* Countdown Overlay */}
           {isCountingDown && (
             <div className="absolute inset-0 flex items-center justify-center 
                          bg-black/40 backdrop-blur-sm">
@@ -102,7 +177,6 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
             </div>
           )}
 
-          {/* Loading State */}
           {!isStreaming && (
             <div className="absolute inset-0 flex items-center justify-center 
                          bg-purple-900/80 backdrop-blur-sm">
@@ -116,7 +190,6 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
         </div>
       </div>
 
-      {/* Camera Guidelines */}
       <div className="mt-6 p-4 bg-purple-900/20 backdrop-blur-sm rounded-xl
                     border border-purple-300/20">
         <h3 className="text-white font-medium mb-2">Tips for Best Results:</h3>
