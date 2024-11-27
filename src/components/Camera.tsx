@@ -1,21 +1,23 @@
 import { useRef, useState, useEffect } from 'react';
+import { Camera, FlipHorizontal } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
 }
 
-const Camera = ({ onPhotoTaken }: CameraProps) => {
+const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'environment',
+          facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         } 
@@ -23,7 +25,7 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
         setIsStreaming(true);
       }
     } catch (err) {
@@ -32,16 +34,23 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
     }
   };
 
+  const toggleCamera = async () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
   useEffect(() => {
     startCamera();
     return () => {
-      // Cleanup: stop all video streams when component unmounts
       if (videoRef.current?.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [facingMode]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
@@ -74,11 +83,14 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
     
     const context = canvas.getContext('2d');
     if (context) {
+      if (facingMode === 'user') {
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+      }
       context.drawImage(videoRef.current, 0, 0);
       const photoData = canvas.toDataURL('image/jpeg', 0.8);
       onPhotoTaken(photoData);
 
-      // Stop the camera stream after taking photo
       const tracks = (videoRef.current.srcObject as MediaStream)?.getTracks();
       tracks?.forEach(track => track.stop());
     }
@@ -86,14 +98,15 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
 
   if (error) {
     return (
-      <div className="text-center p-4 bg-red-50 rounded-lg">
-        <p className="text-red-600 mb-2">{error}</p>
+      <div className="text-center p-6 bg-purple-900/30 rounded-xl backdrop-blur-sm border border-purple-300/20">
+        <p className="text-purple-100 mb-4">{error}</p>
         <button
           onClick={() => {
             setError(null);
             startCamera();
           }}
-          className="bg-red-100 text-red-700 px-4 py-2 rounded hover:bg-red-200"
+          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 
+                     transition-all duration-300 shadow-lg shadow-purple-900/50"
         >
           Try Again
         </button>
@@ -102,34 +115,47 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
   }
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-full max-w-md aspect-video rounded-lg overflow-hidden">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="relative w-full max-w-md aspect-video rounded-xl overflow-hidden 
+                    border-2 border-purple-300/20 shadow-xl shadow-purple-900/30">
         <video
           ref={videoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
           onLoadedMetadata={() => setIsStreaming(true)}
         />
         
         {isStreaming && !isCountingDown && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-30">
-            <p className="text-white mb-4 text-lg">
+          <div className="absolute inset-0 flex flex-col items-center justify-center 
+                         bg-gradient-to-t from-purple-900/70 to-transparent">
+            <p className="text-white mb-4 text-lg text-center px-4">
               Position yourself according to the instructions
             </p>
-            <button
-              onClick={startCountdown}
-              className="bg-white text-blue-500 px-6 py-2 rounded-full shadow-lg
-                       hover:bg-blue-50 transition-colors"
-            >
-              Take Photo
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={toggleCamera}
+                className="p-3 bg-purple-600/80 text-white rounded-full hover:bg-purple-500/80 
+                         transition-all duration-300 shadow-lg"
+                title="Switch Camera"
+              >
+                <FlipHorizontal className="w-6 h-6" />
+              </button>
+              <button
+                onClick={startCountdown}
+                className="px-6 py-3 bg-purple-600/80 text-white rounded-full hover:bg-purple-500/80 
+                         transition-all duration-300 shadow-lg flex items-center space-x-2"
+              >
+                <Camera className="w-6 h-6" />
+                <span>Take Photo</span>
+              </button>
+            </div>
           </div>
         )}
 
         {isCountingDown && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-            <div className="text-white text-6xl font-bold">
+          <div className="absolute inset-0 flex items-center justify-center bg-purple-900/40 backdrop-blur-sm">
+            <div className="text-white text-7xl font-bold animate-pulse">
               {countdown}
             </div>
           </div>
@@ -137,12 +163,12 @@ const Camera = ({ onPhotoTaken }: CameraProps) => {
       </div>
 
       {!isStreaming && (
-        <div className="mt-4 text-center">
-          <p className="text-gray-600">Starting camera...</p>
+        <div className="text-center">
+          <p className="text-purple-200">Starting camera...</p>
         </div>
       )}
     </div>
   );
 };
 
-export default Camera;
+export default CameraComponent;
