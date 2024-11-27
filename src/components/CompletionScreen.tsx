@@ -1,6 +1,5 @@
 // src/components/CompletionScreen.tsx
 
-import type { Exercise } from '../types/assessment';
 import type { AnalysisResult } from '../types/assessment';
 
 interface CompletionScreenProps {
@@ -64,7 +63,7 @@ export function CompletionScreen({ averageAge, analyses, onRestart }: Completion
                       </div>
                       {exercise.targetMuscles && exercise.targetMuscles.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {exercise.targetMuscles.map((muscle: string, muscleIndex: number) => (
+                          {exercise.targetMuscles.map((muscle, muscleIndex) => (
                             <span 
                               key={muscleIndex}
                               className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
