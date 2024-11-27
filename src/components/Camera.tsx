@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from 'react';
-import { Camera, FlipHorizontal } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
@@ -139,14 +138,13 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
                          transition-all duration-300 shadow-lg"
                 title="Switch Camera"
               >
-                <FlipHorizontal className="w-6 h-6" />
+                ⟲
               </button>
               <button
                 onClick={startCountdown}
                 className="px-6 py-3 bg-purple-600/80 text-white rounded-full hover:bg-purple-500/80 
                          transition-all duration-300 shadow-lg flex items-center space-x-2"
               >
-                <Camera className="w-6 h-6" />
                 <span>Take Photo</span>
               </button>
             </div>
