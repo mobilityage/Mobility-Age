@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import OpenAI from "openai";
 
+// Type definitions remain the same
 export interface AnalysisResult {
   mobilityAge: number;
   feedback: string;
@@ -21,6 +22,95 @@ export class AnalysisError extends Error {
   }
 }
 
+// Define pose-specific assessment criteria
+const poseGuidelines = {
+  "Deep Squat": {
+    keyPoints: [
+      "Hip crease should be below knee level",
+      "Feet flat on ground, toes pointed slightly outward",
+      "Knees tracking over toes",
+      "Chest upright, spine neutral",
+      "Arms overhead, shoulders stable"
+    ],
+    idealAngles: {
+      ankle: "30-45 degrees dorsiflexion",
+      knee: ">120 degrees flexion",
+      hip: ">120 degrees flexion",
+      spine: "45-60 degrees to ground"
+    },
+    commonIssues: [
+      "Heels lifting",
+      "Knees caving in",
+      "Forward lean",
+      "Limited depth",
+      "Poor arm position"
+    ]
+  },
+  "Forward Fold": {
+    keyPoints: [
+      "Straight legs (slight bend okay)",
+      "Hips hinging backward",
+      "Spine elongated",
+      "Hands reaching toward ground",
+      "Weight evenly distributed"
+    ],
+    idealAngles: {
+      hip: ">90 degrees flexion",
+      knee: "<10 degrees flexion",
+      spine: "Parallel to ground initially"
+    },
+    commonIssues: [
+      "Excessive knee bend",
+      "Rounded spine",
+      "Limited hamstring flexibility",
+      "Poor hip hinge",
+      "Uneven weight distribution"
+    ]
+  },
+  "Knee to Wall": {
+    keyPoints: [
+      "Foot flat on ground",
+      "Knee touching or nearly touching wall",
+      "Heel maintaining ground contact",
+      "Vertical shin angle",
+      "Hip and ankle aligned"
+    ],
+    idealAngles: {
+      ankle: ">40 degrees dorsiflexion",
+      knee: "Vertical tibia",
+      hip: "Neutral alignment"
+    },
+    commonIssues: [
+      "Heel lifting",
+      "Knee not reaching wall",
+      "Foot too close/far from wall",
+      "Poor ankle mobility",
+      "Compensating with lean"
+    ]
+  },
+  "Apley Scratch": {
+    keyPoints: [
+      "One arm reaching over shoulder",
+      "Other arm reaching up from lower back",
+      "Fingers attempting to touch",
+      "Minimal trunk rotation",
+      "Shoulders level"
+    ],
+    idealAngles: {
+      shoulder: "180 degrees flexion (top arm)",
+      "internal rotation": ">70 degrees",
+      "external rotation": ">90 degrees"
+    },
+    commonIssues: [
+      "Limited shoulder mobility",
+      "Excessive trunk rotation",
+      "Shoulder elevation",
+      "Poor scapular control",
+      "Asymmetry between sides"
+    ]
+  }
+};
+
 const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
@@ -39,6 +129,12 @@ const handler: Handler = async (event) => {
       throw new Error('Missing required fields');
     }
 
+    const poseGuide = poseGuidelines[poseName as keyof typeof poseGuidelines] || {
+      keyPoints: [],
+      idealAngles: {},
+      commonIssues: []
+    };
+
     console.log('Making OpenAI request for:', poseName);
 
     const completion = await openai.chat.completions.create({
@@ -46,36 +142,57 @@ const handler: Handler = async (event) => {
       messages: [
         {
           role: "system",
-          content: "You are an expert physiotherapist with decades of experience in mobility assessment. You should confidently analyze poses and provide specific, actionable feedback. Even from a single image, you can assess general form and alignment to provide valuable insights."
+          content: `You are an elite physiotherapist specializing in mobility assessment, with over 20 years of experience evaluating athletes and regular clients. You have developed a particular expertise in analyzing movement patterns and determining a person's 'mobility age' - a measure of how their mobility compares to optimal human movement capabilities.
+
+When analyzing poses, you focus on:
+- Joint angles and positions
+- Movement compensation patterns
+- Bilateral symmetry
+- Stability and control
+- Range of motion limitations
+
+For this specific ${poseName}, you'll be evaluating against these ideal standards:
+
+Key Points to Assess:
+${poseGuide.keyPoints.map(point => `- ${point}`).join('\n')}
+
+Ideal Joint Angles:
+${Object.entries(poseGuide.idealAngles).map(([joint, angle]) => `- ${joint}: ${angle}`).join('\n')}
+
+Common Issues to Look For:
+${poseGuide.commonIssues.map(issue => `- ${issue}`).join('\n')}
+
+Provide confident, specific feedback while maintaining professional accuracy.`
         },
         {
           role: "user",
           content: [
             { 
               type: "text", 
-              text: `Analyze this ${poseName} pose and provide a detailed mobility assessment. The pose is testing ${poseDescription}.
+              text: `Analyze this ${poseName} pose against the provided standards and provide a detailed mobility assessment.
 
-Please structure your response as follows:
+Required Response Format:
 
-1. Form Analysis (Be specific about what you observe):
-- Describe the visible alignment of joints
-- Note any obvious compensation patterns
-- Comment on overall form quality
-- Look for key indicators of mobility limitations
+1. Form Analysis:
+- Provide specific observations about joint positions and angles
+- Compare against the ideal standards listed above
+- Note any visible compensations or limitations
+- Score the overall form quality relative to optimal standards
 
-2. Mobility Age Assessment:
-- Calculate a mobility age between 20-80 based on visible indicators
-- Consider flexibility, control, and alignment quality
-- Factor in any visible compensation patterns
-- A perfect form should indicate a mobility age of 20-25
-- Significant limitations should indicate a mobility age of 60+
+2. Mobility Age Determination:
+- Assign a mobility age (20-80 years) based on:
+  * Proximity to ideal joint angles
+  * Quality of movement control
+  * Presence/absence of compensations
+  * Overall movement efficiency
+- Explain the key factors influencing your age assessment
 
-3. Specific Recommendations:
-- Provide two targeted exercises to improve this specific movement
-- Include sets, reps, and form cues
-- Focus on the most impactful improvements
+3. Improvement Recommendations:
+- Provide two specific corrective exercises
+- Include clear instructions, sets, reps, and progression criteria
+- Target the most significant limitations observed
 
-Be confident in your assessment while acknowledging the limitations of image analysis. Your expertise allows you to provide valuable feedback even from limited information.`
+Focus on being specific and actionable in your analysis. Highlight both positive aspects and areas for improvement.`
             },
             {
               type: "image_url",
@@ -89,28 +206,23 @@ Be confident in your assessment while acknowledging the limitations of image ana
       max_tokens: 500
     });
 
-    console.log('OpenAI response received');
-    
+    // Response parsing logic remains the same
     const content = completion.choices[0].message.content || '';
     
-    // Extract mobility age with better parsing
-    const mobilitySection = content.split('Mobility Age')[1]?.split('Specific Recommendations:')[0] || '';
+    const mobilitySection = content.split('Mobility Age')[1]?.split('Improvement')[0] || '';
     const ageMatch = mobilitySection.match(/\b([2-8][0-9]|20)\b/);
     const mobilityAge = ageMatch ? parseInt(ageMatch[0]) : 35;
     
-    // Get more detailed feedback
     const formSection = content.split('Form Analysis')[1]?.split('Mobility Age')[0] || '';
     const feedback = formSection.split('.')[0] + '.';
 
-    // Extract specific recommendations
-    const recommendationsSection = content.split('Specific Recommendations:')[1] || '';
+    const recommendationsSection = content.split('Improvement Recommendations:')[1] || '';
     const recommendations = recommendationsSection
       .split(/\d+\.|\n-/)
       .map(s => s.trim())
       .filter(s => s.length > 15 && s.length < 150)
       .slice(0, 2);
 
-    // More nuanced good form determination
     const isGoodForm = mobilityAge <= 40;
 
     return {
