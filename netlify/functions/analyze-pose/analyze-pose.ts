@@ -29,11 +29,6 @@ class AnalysisError extends Error {
 const parseContent = (content: string, poseName: string): AnalysisResult => {
   console.log('Starting to parse content:', content);
 
-  // First check if we got an error message from GPT
-  if (content.toLowerCase().includes('sorry') || content.toLowerCase().includes('cannot')) {
-    throw new Error('GPT unable to analyze image: ' + content);
-  }
-
   try {
     // Extract mobility age
     const ageMatch = content.match(/Age:\s*(\d+)/i);
@@ -70,13 +65,6 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       targetMuscles: ['full body']
     };
 
-    console.log('Parsed result:', {
-      mobilityAge,
-      isGoodForm,
-      feedback: feedback.substring(0, 50) + '...',
-      recommendationsCount: recommendations.length
-    });
-
     return {
       mobilityAge,
       feedback,
@@ -93,7 +81,6 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
 };
 
 const handler: Handler = async (event) => {
-  // Add CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -128,6 +115,11 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
+    // Ensure the base64 image data is properly formatted
+    const base64Image = photo.startsWith('data:image') 
+      ? photo 
+      : `data:image/jpeg;base64,${photo}`;
+
     const systemPrompt = `You are a physiotherapist analyzing a mobility pose. Respond EXACTLY in this format:
 
 Age: [number between 20-80]
@@ -154,9 +146,7 @@ Recommendations:
             },
             {
               type: "image_url",
-              image_url: {
-                "url": photo
-              }
+              image_url: base64Image
             }
           ]
         }
