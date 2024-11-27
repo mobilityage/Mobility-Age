@@ -47,11 +47,7 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        photo: data.photo,
-        poseName: data.poseName,
-        poseDescription: data.poseDescription
-      })
+      body: JSON.stringify(data)
     });
 
     // Log response status
@@ -66,18 +62,12 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     const result = await response.json();
     console.log('Received analysis result');
 
-    // Add poseName to the result
-    const enhancedResult: AnalysisResult = {
-      ...result,
-      poseName: data.poseName
-    };
-
-    if (!isValidAnalysisResult(enhancedResult)) {
-      console.error('Invalid result structure:', enhancedResult);
+    if (!isValidAnalysisResult(result)) {
+      console.error('Invalid result structure:', result);
       throw new AnalysisError('Invalid response format from server');
     }
 
-    return enhancedResult;
+    return result;
   } catch (error) {
     console.error('Analysis error:', error);
     if (error instanceof AnalysisError) {
@@ -97,6 +87,18 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     Array.isArray(result.exercises) &&
     typeof result.poseName === 'string';
 
+  if (!hasRequiredFields) {
+    console.log('Missing required fields:', {
+      hasMobilityAge: typeof result?.mobilityAge === 'number',
+      hasFeedback: typeof result?.feedback === 'string',
+      hasRecommendations: Array.isArray(result?.recommendations),
+      hasIsGoodForm: typeof result?.isGoodForm === 'boolean',
+      hasExercises: Array.isArray(result?.exercises),
+      hasPoseName: typeof result?.poseName === 'string'
+    });
+    return false;
+  }
+
   const hasValidExercises = result.exercises.every((exercise: any) => 
     exercise &&
     typeof exercise.name === 'string' &&
@@ -107,18 +109,10 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     (!exercise.reps || typeof exercise.reps === 'number')
   );
 
-  if (!hasRequiredFields || !hasValidExercises) {
-    console.log('Validation details:', {
-      hasRequiredFields,
-      hasValidExercises,
-      mobilityAge: typeof result?.mobilityAge === 'number',
-      feedback: typeof result?.feedback === 'string',
-      recommendations: Array.isArray(result?.recommendations),
-      isGoodForm: typeof result?.isGoodForm === 'boolean',
-      exercises: Array.isArray(result?.exercises),
-      poseName: typeof result?.poseName === 'string'
-    });
+  if (!hasValidExercises) {
+    console.log('Invalid exercise format detected');
+    return false;
   }
 
-  return hasRequiredFields && hasValidExercises;
+  return true;
 }
