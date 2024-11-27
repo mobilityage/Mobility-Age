@@ -8,53 +8,75 @@ interface PoseFeedbackProps {
 
 export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProps) {
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md">
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold">Form Analysis</h3>
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-900">Form Analysis</h3>
           <span 
-            className={`px-3 py-1 rounded-full text-sm ${
-              analysis.isGoodForm ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            className={`px-4 py-1.5 rounded-full text-sm font-medium ${
+              analysis.isGoodForm 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
             }`}
           >
             {analysis.isGoodForm ? 'Good Form' : 'Needs Adjustment'}
           </span>
         </div>
-        <div className="h-2 bg-gray-200 rounded-full mb-2">
-          <div 
-            className="h-2 bg-blue-500 rounded-full"
-            style={{ width: `${analysis.score}%` }}
-          ></div>
+        
+        <div className="mb-6">
+          <div className="flex justify-between mb-2 text-sm font-medium">
+            <span className="text-gray-600">Score</span>
+            <span className="text-gray-900">{analysis.score}/100</span>
+          </div>
+          <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                analysis.score >= 80 ? 'bg-green-500' :
+                analysis.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+              }`}
+              style={{ width: `${analysis.score}%` }}
+            />
+          </div>
         </div>
-        <p className="text-gray-600 mb-4">{analysis.feedback}</p>
-      </div>
 
-      {analysis.recommendations.length > 0 && (
-        <div className="mb-4">
-          <h4 className="font-semibold mb-2">Recommendations:</h4>
-          <ul className="list-disc pl-5 text-sm text-gray-600">
-            {analysis.recommendations.map((rec, index) => (
-              <li key={index} className="mb-1">{rec}</li>
-            ))}
-          </ul>
+        <div className="mb-6">
+          <p className="text-gray-700 text-lg mb-4">{analysis.feedback}</p>
+          
+          {analysis.recommendations.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-900">Recommendations:</h4>
+              <ul className="space-y-2">
+                {analysis.recommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm mr-2 mt-0.5">
+                      {index + 1}
+                    </span>
+                    <span className="text-gray-700">{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="flex gap-2">
-        {!analysis.isGoodForm && (
+        <div className="flex gap-3">
+          {!analysis.isGoodForm && (
+            <button
+              onClick={onRetry}
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg
+                         hover:bg-gray-50 active:bg-gray-100 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
           <button
-            onClick={onRetry}
-            className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            onClick={onContinue}
+            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg
+                       hover:bg-blue-700 active:bg-blue-800 transition-colors"
           >
-            Try Again
+            {analysis.isGoodForm ? 'Continue' : 'Continue Anyway'}
           </button>
-        )}
-        <button
-          onClick={onContinue}
-          className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          {analysis.isGoodForm ? 'Continue' : 'Continue Anyway'}
-        </button>
+        </div>
       </div>
     </div>
   );
