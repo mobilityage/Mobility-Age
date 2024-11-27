@@ -1,4 +1,10 @@
-// src/components/PoseInstructions.tsx
+import { PoseInstruction } from '../types/assessment';
+
+interface PoseInstructionsProps {
+  poseData: PoseInstruction;
+  onStartPose: () => void;
+}
+
 export function PoseInstructions({ poseData, onStartPose }: PoseInstructionsProps) {
   return (
     <div className="max-w-2xl mx-auto">
@@ -11,24 +17,6 @@ export function PoseInstructions({ poseData, onStartPose }: PoseInstructionsProp
           <p className="text-purple-200 mt-1">{poseData.description}</p>
         </div>
 
-        {/* Reference Image */}
-        {poseData.referenceImage && (
-          <div className="relative aspect-video">
-            <img 
-              src={poseData.referenceImage}
-              alt="Reference Pose"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent">
-              <div className="absolute bottom-4 left-4">
-                <span className="px-3 py-1 bg-black/30 rounded-full text-sm text-white">
-                  Reference Pose
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Instructions */}
         <div className="p-6 space-y-6">
           {/* Setup Instructions */}
@@ -40,8 +28,8 @@ export function PoseInstructions({ poseData, onStartPose }: PoseInstructionsProp
               Setup
             </h3>
             <ul className="space-y-2 text-purple-100">
-              {poseData.setup.map((step, index) => (
-                <li key={index} className="flex items-start gap-2">
+              {poseData.setup.map((step: string, index: number) => (
+                <li key={`setup-${index}`} className="flex items-start gap-2">
                   <span className="text-purple-400">•</span>
                   <span>{step}</span>
                 </li>
@@ -58,8 +46,8 @@ export function PoseInstructions({ poseData, onStartPose }: PoseInstructionsProp
               Steps
             </h3>
             <ul className="space-y-2 text-purple-100">
-              {poseData.steps.map((step, index) => (
-                <li key={index} className="flex items-start gap-2">
+              {poseData.steps.map((step: string, index: number) => (
+                <li key={`step-${index}`} className="flex items-start gap-2">
                   <span className="text-purple-400">•</span>
                   <span>{step}</span>
                 </li>
