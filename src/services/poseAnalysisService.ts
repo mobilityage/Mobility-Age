@@ -14,8 +14,6 @@ export interface AnalysisResult {
   feedback: string;
   recommendations: string[];
   isGoodForm: boolean;
-  exercises: Exercise[];
-  poseName: string;
 }
 
 export interface PoseAnalysis {
@@ -33,10 +31,8 @@ export class AnalysisError extends Error {
 
 export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
   try {
-    // Log the attempt
     console.log('Starting pose analysis for:', data.poseName);
 
-    // Verify photo data exists and is in correct format
     if (!data.photo) {
       throw new AnalysisError('No photo data provided');
     }
@@ -50,7 +46,6 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
       body: JSON.stringify(data)
     });
 
-    // Log response status
     console.log('Response status:', response.status);
 
     if (!response.ok) {
@@ -61,6 +56,15 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
 
     const result = await response.json();
     console.log('Received analysis result');
+
+    // Log the actual result structure
+    console.log('Result structure:', {
+      hasMobilityAge: typeof result?.mobilityAge === 'number',
+      hasFeedback: typeof result?.feedback === 'string',
+      hasRecommendations: Array.isArray(result?.recommendations),
+      hasIsGoodForm: typeof result?.isGoodForm === 'boolean',
+      actualResult: result
+    });
 
     if (!isValidAnalysisResult(result)) {
       console.error('Invalid result structure:', result);
@@ -78,41 +82,12 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
 }
 
 function isValidAnalysisResult(result: any): result is AnalysisResult {
-  const hasRequiredFields = result &&
+  return (
+    result !== null &&
     typeof result === 'object' &&
     typeof result.mobilityAge === 'number' &&
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
-    typeof result.isGoodForm === 'boolean' &&
-    Array.isArray(result.exercises) &&
-    typeof result.poseName === 'string';
-
-  if (!hasRequiredFields) {
-    console.log('Missing required fields:', {
-      hasMobilityAge: typeof result?.mobilityAge === 'number',
-      hasFeedback: typeof result?.feedback === 'string',
-      hasRecommendations: Array.isArray(result?.recommendations),
-      hasIsGoodForm: typeof result?.isGoodForm === 'boolean',
-      hasExercises: Array.isArray(result?.exercises),
-      hasPoseName: typeof result?.poseName === 'string'
-    });
-    return false;
-  }
-
-  const hasValidExercises = result.exercises.every((exercise: any) => 
-    exercise &&
-    typeof exercise.name === 'string' &&
-    typeof exercise.description === 'string' &&
-    ['beginner', 'intermediate', 'advanced'].includes(exercise.difficulty) &&
-    Array.isArray(exercise.targetMuscles) &&
-    (!exercise.sets || typeof exercise.sets === 'number') &&
-    (!exercise.reps || typeof exercise.reps === 'number')
+    typeof result.isGoodForm === 'boolean'
   );
-
-  if (!hasValidExercises) {
-    console.log('Invalid exercise format detected');
-    return false;
-  }
-
-  return true;
 }
