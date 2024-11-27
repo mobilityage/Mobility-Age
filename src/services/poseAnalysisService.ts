@@ -1,14 +1,16 @@
-export interface PoseAnalysis {
-  photo: string;
-  poseName: string;
-  poseDescription: string;
-}
+// src/services/poseAnalysisService.ts
 
 export interface AnalysisResult {
   mobilityAge: number;
   feedback: string;
   recommendations: string[];
   isGoodForm: boolean;
+}
+
+export interface PoseAnalysis {
+  photo: string;
+  poseName: string;
+  poseDescription: string;
 }
 
 export class AnalysisError extends Error {
@@ -71,14 +73,14 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
 function isValidAnalysisResult(result: any): result is AnalysisResult {
   const isValid = result &&
     typeof result === 'object' &&
-    typeof result.score === 'number' &&
+    typeof result.mobilityAge === 'number' &&
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
     typeof result.isGoodForm === 'boolean';
 
   if (!isValid) {
     console.log('Invalid result structure:', {
-      hasScore: typeof result?.score === 'number',
+      hasMobilityAge: typeof result?.mobilityAge === 'number',
       hasFeedback: typeof result?.feedback === 'string',
       hasRecommendations: Array.isArray(result?.recommendations),
       hasIsGoodForm: typeof result?.isGoodForm === 'boolean'
