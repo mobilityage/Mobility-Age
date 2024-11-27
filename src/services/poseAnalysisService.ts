@@ -15,6 +15,7 @@ export interface AnalysisResult {
   recommendations: string[];
   isGoodForm: boolean;
   exercises: Exercise[];
+  poseName: string;
 }
 
 export interface PoseAnalysis {
@@ -65,12 +66,18 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     const result = await response.json();
     console.log('Received analysis result');
 
-    if (!isValidAnalysisResult(result)) {
-      console.error('Invalid result structure:', result);
+    // Add poseName to the result
+    const enhancedResult: AnalysisResult = {
+      ...result,
+      poseName: data.poseName
+    };
+
+    if (!isValidAnalysisResult(enhancedResult)) {
+      console.error('Invalid result structure:', enhancedResult);
       throw new AnalysisError('Invalid response format from server');
     }
 
-    return result;
+    return enhancedResult;
   } catch (error) {
     console.error('Analysis error:', error);
     if (error instanceof AnalysisError) {
@@ -87,7 +94,8 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
     typeof result.isGoodForm === 'boolean' &&
-    Array.isArray(result.exercises);
+    Array.isArray(result.exercises) &&
+    typeof result.poseName === 'string';
 
   const hasValidExercises = result.exercises.every((exercise: any) => 
     exercise &&
@@ -107,7 +115,8 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
       feedback: typeof result?.feedback === 'string',
       recommendations: Array.isArray(result?.recommendations),
       isGoodForm: typeof result?.isGoodForm === 'boolean',
-      exercises: Array.isArray(result?.exercises)
+      exercises: Array.isArray(result?.exercises),
+      poseName: typeof result?.poseName === 'string'
     });
   }
 
