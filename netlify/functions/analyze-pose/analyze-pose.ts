@@ -39,7 +39,7 @@ const handler: Handler = async (event) => {
       throw new Error('Missing required fields');
     }
 
-    console.log('Making OpenAI request for:', poseName);
+    console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -92,7 +92,7 @@ EXERCISE 2:
 - Form Cues:
 - Progress When:
 
-Both exercises should directly address limitations observed in the pose assessment. Make exercises accessible but challenging enough to drive improvement.`
+Both exercises should directly address limitations observed in the pose assessment.`
             },
             {
               type: "image_url",
@@ -106,19 +106,25 @@ Both exercises should directly address limitations observed in the pose assessme
       max_tokens: 500
     });
 
+    console.log('Raw API response:', completion.choices[0].message.content);
+    
     const content = completion.choices[0].message.content || '';
     
     // Extract mobility age
     const mobilitySection = content.split('Mobility Age')[1]?.split('Exercise')[0] || '';
+    console.log('Mobility section:', mobilitySection);
     const ageMatch = mobilitySection.match(/\b([2-8][0-9]|20)\b/);
+    console.log('Age match:', ageMatch);
     const mobilityAge = ageMatch ? parseInt(ageMatch[0]) : 35;
     
     // Extract main feedback
     const formSection = content.split('Form Analysis')[1]?.split('Mobility Age')[0] || '';
+    console.log('Form section:', formSection);
     const feedback = formSection.split('.')[0] + '.';
 
-    // Extract exercises with improved parsing
+    // Extract exercises
     const exerciseSection = content.split('Exercise Prescription:')[1] || '';
+    console.log('Exercise section:', exerciseSection);
     const exercises = exerciseSection
       .split(/EXERCISE \d+:/i)
       .filter(Boolean)
@@ -131,6 +137,8 @@ Both exercises should directly address limitations observed in the pose assessme
       })
       .filter(ex => ex.length > 20);
 
+    console.log('Parsed exercises:', exercises);
+
     const recommendations = exercises.length ? exercises : [
       "Exercise 1: Perform mobility-specific stretches focusing on identified limitations. 3 sets of 30 seconds each.",
       "Exercise 2: Practice the movement pattern with controlled tempo. 3 sets of 8-10 repetitions."
@@ -138,15 +146,19 @@ Both exercises should directly address limitations observed in the pose assessme
 
     const isGoodForm = mobilityAge <= 40;
 
+    const result = {
+      mobilityAge,
+      feedback,
+      recommendations,
+      isGoodForm
+    };
+
+    console.log('Final result:', result);
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mobilityAge,
-        feedback: feedback || 'Form analysis completed.',
-        recommendations,
-        isGoodForm
-      })
+      body: JSON.stringify(result)
     };
 
   } catch (error) {
