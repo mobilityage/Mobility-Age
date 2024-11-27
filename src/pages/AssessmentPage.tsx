@@ -144,7 +144,10 @@ export default function AssessmentPage() {
                 {assessmentState === 'complete' && (
                   <CompletionScreen 
                     averageAge={getAverageAge()}
-                    analyses={analyses}
+                    analyses={analyses.map(analysis => ({
+                      ...analysis,
+                      poseName: analysis.poseName || MOBILITY_POSES[analyses.indexOf(analysis)].name
+                    }))}
                     onRestart={handleRestart}
                   />
                 )}
