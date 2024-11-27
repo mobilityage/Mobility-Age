@@ -1,26 +1,6 @@
 // src/services/poseAnalysisService.ts
 
-export interface Exercise {
-  name: string;
-  description: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  sets?: number;
-  reps?: number;
-  targetMuscles: string[];
-}
-
-export interface AnalysisResult {
-  mobilityAge: number;
-  feedback: string;
-  recommendations: string[];
-  isGoodForm: boolean;
-}
-
-export interface PoseAnalysis {
-  photo: string;
-  poseName: string;
-  poseDescription: string;
-}
+import { AnalysisResult, PoseAnalysis, Exercise } from '../types/assessment';
 
 export class AnalysisError extends Error {
   constructor(message: string) {
@@ -57,21 +37,17 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     const result = await response.json();
     console.log('Received analysis result');
 
-    // Log the actual result structure
-    console.log('Result structure:', {
-      hasMobilityAge: typeof result?.mobilityAge === 'number',
-      hasFeedback: typeof result?.feedback === 'string',
-      hasRecommendations: Array.isArray(result?.recommendations),
-      hasIsGoodForm: typeof result?.isGoodForm === 'boolean',
-      actualResult: result
-    });
-
     if (!isValidAnalysisResult(result)) {
       console.error('Invalid result structure:', result);
       throw new AnalysisError('Invalid response format from server');
     }
 
-    return result;
+    // Ensure poseName is included in the result
+    return {
+      ...result,
+      poseName: data.poseName,
+      exercises: result.exercises || []
+    };
   } catch (error) {
     console.error('Analysis error:', error);
     if (error instanceof AnalysisError) {
@@ -88,6 +64,9 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     typeof result.mobilityAge === 'number' &&
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
-    typeof result.isGoodForm === 'boolean'
+    typeof result.isGoodForm === 'boolean' &&
+    (!result.exercises || Array.isArray(result.exercises))
   );
 }
+
+export { AnalysisResult, PoseAnalysis, Exercise };
