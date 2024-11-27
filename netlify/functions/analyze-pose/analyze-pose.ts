@@ -16,6 +16,7 @@ export interface AnalysisResult {
   recommendations: string[];
   isGoodForm: boolean;
   exercises: Exercise[];
+  poseName: string;
 }
 
 export class AnalysisError extends Error {
@@ -89,7 +90,7 @@ const handler: Handler = async (event) => {
     }
 
     const openai = new OpenAI({ apiKey: apiKey });
-    const { photo, poseName } = JSON.parse(event.body || '{}');
+    const { photo, poseName, poseDescription } = JSON.parse(event.body || '{}');
 
     if (!photo || !poseName) {
       throw new AnalysisError('Missing required fields: photo or poseName');
@@ -142,6 +143,7 @@ EXERCISES:
     }
 
     const result = parseContent(content);
+    result.poseName = poseName;
 
     return {
       statusCode: 200,
