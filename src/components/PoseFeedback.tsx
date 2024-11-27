@@ -1,17 +1,9 @@
-import { AnalysisResult } from '../services/poseAnalysisService';
-
-interface PoseFeedbackProps {
-  analysis: AnalysisResult;
-  onContinue: () => void;
-  onRetry: () => void;
-}
-
 export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProps) {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">Form Analysis</h3>
+          <h3 className="text-xl font-semibold text-gray-900">Mobility Analysis</h3>
           <span 
             className={`px-4 py-1.5 rounded-full text-sm font-medium ${
               analysis.isGoodForm 
@@ -19,22 +11,22 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
                 : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
             }`}
           >
-            {analysis.isGoodForm ? 'Good Form' : 'Needs Adjustment'}
+            Mobility Age: {analysis.mobilityAge}
           </span>
         </div>
         
         <div className="mb-6">
           <div className="flex justify-between mb-2 text-sm font-medium">
-            <span className="text-gray-600">Score</span>
-            <span className="text-gray-900">{analysis.score}/100</span>
+            <span className="text-gray-600">Mobility Assessment</span>
+            <span className="text-gray-900">Age {analysis.mobilityAge}</span>
           </div>
           <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-500 ${
-                analysis.score >= 80 ? 'bg-green-500' :
-                analysis.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                analysis.mobilityAge <= 30 ? 'bg-green-500' :
+                analysis.mobilityAge <= 45 ? 'bg-yellow-500' : 'bg-red-500'
               }`}
-              style={{ width: `${analysis.score}%` }}
+              style={{ width: `${Math.max(0, 100 - analysis.mobilityAge)}%` }}
             />
           </div>
         </div>
@@ -44,7 +36,7 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
           
           {analysis.recommendations.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-semibold text-gray-900">Recommendations:</h4>
+              <h4 className="font-semibold text-gray-900">Recommended Improvements:</h4>
               <ul className="space-y-2">
                 {analysis.recommendations.map((rec, index) => (
                   <li key={index} className="flex items-start">
