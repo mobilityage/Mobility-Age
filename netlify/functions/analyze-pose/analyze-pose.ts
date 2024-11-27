@@ -1,3 +1,5 @@
+// netlify/functions/analyze-pose.ts
+
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
 
@@ -17,40 +19,70 @@ constructor(message: string) {
 
 const parseContent = (content: string): AnalysisResult => {
 try {
-  // Extract mobility age (look for numbers followed by "years" or similar)
-  const ageMatch = content.match(/(\d+)(?:\s*(?:years|yrs|yr|y))/i);
+  // Extract mobility age
+  const ageMatch = content.match(/Age:\s*(\d+)/i);
   const mobilityAge = ageMatch ? parseInt(ageMatch[1]) : 35;
 
-  // Extract feedback (first substantial paragraph)
-  const feedbackMatch = content.match(/[^.!?]+[.!?]+/g);
-  const feedback = feedbackMatch ? feedbackMatch[0].trim() : '';
+  // Extract feedback (first substantial paragraph after "Feedback:")
+  const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
+  const feedback = feedbackMatch ? feedbackMatch[1].trim() : '';
 
-  // Extract recommendations (look for bullet points or numbered lists)
-  const recommendations = content
-    .split(/[\n\r]+/)
-    .filter(line => line.match(/^[-•*\d.]\s+/))
-    .map(line => line.replace(/^[-•*\d.]\s+/, '').trim());
+  // Extract recommendations
+  const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*$)/i);
+  const recommendations = recommendationsMatch 
+    ? recommendationsMatch[1]
+        .split(/\n/)
+        .map(line => line.replace(/^[-•*]\s*/, '').trim())
+        .filter(line => line.length > 0)
+    : [];
 
-  // Determine if form is good (look for positive indicators)
+  // Determine if form is good
   const isGoodForm = content.toLowerCase().includes('good form') || 
-                    content.toLowerCase().includes('excellent') ||
-                    content.toLowerCase().includes('perfect');
+                    content.toLowerCase().includes('form: good');
 
-  return {
+  const result = {
     mobilityAge,
     feedback,
     recommendations: recommendations.length ? recommendations : ['Maintain current form'],
     isGoodForm
   };
+
+  // Validate the parsed result
+  if (!result.feedback || result.feedback.length < 5) {
+    throw new Error('Invalid feedback parsed from response');
+  }
+
+  return result;
 } catch (error) {
-  console.error('Error parsing content:', error);
+  console.error('Error parsing content:', error, '\nOriginal content:', content);
   throw new AnalysisError('Failed to parse analysis response');
 }
 };
 
 const handler: Handler = async (event) => {
+// Add CORS headers
+const headers = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Content-Type': 'application/json'
+};
+
+// Handle OPTIONS request
+if (event.httpMethod === 'OPTIONS') {
+  return {
+    statusCode: 204,
+    headers,
+    body: ''
+  };
+}
+
 if (event.httpMethod !== 'POST') {
-  return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  return { 
+    statusCode: 405, 
+    headers,
+    body: JSON.stringify({ error: 'Method not allowed' }) 
+  };
 }
 
 try {
@@ -75,7 +107,7 @@ try {
 4. List 2-3 recommendations for improvement
 5. Indicate if the overall form is good
 
-Format your response as:
+Format your response exactly as:
 Age: [number] years
 Form: [good/needs improvement]
 Feedback: [1-2 sentences]
@@ -109,12 +141,7 @@ Recommendations:
 
   return {
     statusCode: 200,
-    headers: { 
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    },
+    headers,
     body: JSON.stringify(result)
   };
 
@@ -122,16 +149,11 @@ Recommendations:
   console.error('Function error:', error);
   return {
     statusCode: 500,
-    headers: { 
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    },
+    headers,
     body: JSON.stringify({ 
       error: 'Analysis failed',
       message: error instanceof AnalysisError ? error.message : 'Unknown error occurred',
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     })
   };
 }
