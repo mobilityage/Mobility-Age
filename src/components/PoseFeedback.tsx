@@ -1,11 +1,4 @@
-import React from 'react';
-
-interface AnalysisResult {
-  mobilityAge: number;
-  feedback: string;
-  recommendations: string[];
-  isGoodForm: boolean;
-}
+import { AnalysisResult } from '../services/poseAnalysisService';
 
 interface PoseFeedbackProps {
   analysis: AnalysisResult;
