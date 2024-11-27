@@ -1,6 +1,26 @@
 import { Handler } from '@netlify/functions';
 import OpenAI from "openai";
 
+export interface AnalysisResult {
+  mobilityAge: number;
+  feedback: string;
+  recommendations: string[];
+  isGoodForm: boolean;
+}
+
+export interface PoseAnalysis {
+  photo: string;
+  poseName: string;
+  poseDescription: string;
+}
+
+export class AnalysisError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AnalysisError';
+  }
+}
+
 const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
