@@ -16,10 +16,6 @@
   to = "/index.html"
   status = 200
 
-[dev]
-  framework = "vite"
-  targetPort = 5173
-
 [[headers]]
   for = "/*"
     [headers.values]
