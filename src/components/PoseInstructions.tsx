@@ -1,4 +1,3 @@
-import { PoseImage } from './PoseImage';
 import { PoseInstruction } from '../types/assessment';
 
 interface PoseInstructionsProps {
