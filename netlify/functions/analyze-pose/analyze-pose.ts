@@ -32,6 +32,11 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
     const lines = content.split('\n');
     console.log('Content lines:', lines.map(line => line.trim()).filter(Boolean));
 
+    // If the content is an error message from GPT, throw an error
+    if (content.toLowerCase().includes("without an image") || content.toLowerCase().includes("cannot provide")) {
+      throw new Error("Image analysis failed. Please try again.");
+    }
+
     const result: Partial<AnalysisResult> = {
       recommendations: [],
       exercises: [],
@@ -46,7 +51,7 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       
       if (!trimmed) continue;
 
-      console.log('Processing line:', trimmed); // Debug log
+      console.log('Processing line:', trimmed);
 
       // Try to parse mobility age
       if (trimmed.toLowerCase().includes('mobility_age')) {
@@ -210,7 +215,18 @@ Important:
         },
         {
           role: "user",
-          content: `Analyze this ${poseName} pose and provide a detailed mobility report.`,
+          content: [
+            {
+              type: "text",
+              text: `Please analyze this ${poseName} pose. ${poseDescription}`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                "url": photo
+              }
+            }
+          ]
         },
       ],
       max_tokens: 1500
