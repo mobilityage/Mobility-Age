@@ -1,6 +1,5 @@
-// src/components/CameraComponent.tsx
-
 import { useRef, useState, useEffect } from 'react';
+import { Upload, Camera as CameraIcon, RefreshCw } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
@@ -14,30 +13,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
-
-  // Add file upload handler
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type and size
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
-      return;
-    }
-
-    if (file.size > 5000000) { // 5MB limit
-      setError('File size too large. Please choose an image under 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const photoData = e.target?.result as string;
-      onPhotoTaken(photoData);
-    };
-    reader.readAsDataURL(file);
-  };
+  const [uploadMode, setUploadMode] = useState(false);
 
   const startCamera = async () => {
     try {
@@ -61,14 +37,16 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   };
 
   useEffect(() => {
-    startCamera();
+    if (!uploadMode) {
+      startCamera();
+    }
     return () => {
       if (videoRef.current?.srcObject) {
         const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
         tracks.forEach(track => track.stop());
       }
     };
-  }, [facingMode]);
+  }, [facingMode, uploadMode]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
@@ -122,6 +100,35 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const photoData = e.target?.result as string;
+        onPhotoTaken(photoData);
+      };
+      reader.onerror = () => {
+        setError('Error reading file');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const toggleMode = () => {
+    setUploadMode(!uploadMode);
+    setError(null);
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+  };
+
   if (error) {
     return (
       <div className="text-center p-6 bg-purple-900/30 rounded-xl backdrop-blur-sm border border-purple-300/20">
@@ -129,10 +136,10 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
         <button
           onClick={() => {
             setError(null);
-            startCamera();
+            if (!uploadMode) startCamera();
           }}
           className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 
-          transition-all duration-300 shadow-lg shadow-purple-900/50"
+                     transition-all duration-300 shadow-lg shadow-purple-900/50"
         >
           Try Again
         </button>
@@ -143,51 +150,143 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   return (
     <div className="w-full max-w-lg mx-auto px-4">
       <div className="mb-6 text-center">
-        <h2 className="text-2xl font-semibold text-white mb-2">Capture Your Pose</h2>
-        <p className="text-purple-200 text-sm">Take a photo or upload one from your device</p>
-      </div>
-
-      {/* Add file upload button */}
-      <div className="mb-4 text-center">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="px-6 py-3 bg-white/10 backdrop-blur-sm text-white rounded-lg
-          hover:bg-white/20 transition-all duration-300
-          shadow-lg border border-white/20 mb-4"
-        >
-          Upload Photo
-        </button>
-      </div>
-
-      <div className="text-center mb-4">
-        <span className="text-purple-200 text-sm">- or -</span>
+        <h2 className="text-2xl font-semibold text-white mb-2">
+          {uploadMode ? 'Upload Your Pose' : 'Capture Your Pose'}
+        </h2>
+        <p className="text-purple-200 text-sm">
+          Ensure your full body is visible
+        </p>
       </div>
 
       <div className="relative rounded-2xl overflow-hidden bg-purple-900/20 backdrop-blur-sm
-      border border-purple-300/20 shadow-xl">
-        <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className={`absolute inset-0 w-full h-full object-cover ${
-              facingMode === 'user' ? 'scale-x-[-1]' : ''
-            }`}
-            onLoadedMetadata={() => setIsStreaming(true)}
-          />
-          
-          {isStreaming && !isCountingDown && (
-            <div className="absolute inset-0 flex flex-col items-center justify-end
-            bg-gradient-to-t from-black/70 via-transparent to-transparent">
-              <div className="w-full p-4 space-y-4">
-                <div className="flex justify-center items-center space-x-4">
-                  <button
-                    onClick={handleToggleCamera}
-                    className="p-4 bg-white/10
+                    border border-purple-300/20 shadow-xl">
+        {uploadMode ? (
+          <div className="aspect-[3/4] md:aspect-[4/3] w-full flex items-center justify-center">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center space-y-4 p-8 text-purple-200 
+                       hover:text-white transition-colors"
+            >
+              <Upload className="w-12 h-12" />
+              <span className="text-lg">Click to upload a photo</span>
+            </button>
+          </div>
+        ) : (
+          <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className={`absolute inset-0 w-full h-full object-cover ${
+                facingMode === 'user' ? 'scale-x-[-1]' : ''
+              }`}
+              onLoadedMetadata={() => setIsStreaming(true)}
+            />
+            
+            {isStreaming && !isCountingDown && (
+              <div className="absolute inset-0 flex flex-col items-center justify-end
+                           bg-gradient-to-t from-black/70 via-transparent to-transparent">
+                <div className="w-full p-4 space-y-4">
+                  <div className="flex justify-center items-center space-x-4">
+                    <button
+                      onClick={handleToggleCamera}
+                      className="p-4 bg-white/10 backdrop-blur-sm text-white rounded-full
+                               hover:bg-white/20 transition-all duration-300 
+                               shadow-lg border border-white/20"
+                      title="Switch Camera"
+                    >
+                      <RefreshCw className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={handleStartCountdown}
+                      className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-full
+                               hover:bg-white/20 transition-all duration-300
+                               shadow-lg border border-white/20
+                               font-medium text-lg"
+                    >
+                      Take Photo
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isCountingDown && (
+              <div className="absolute inset-0 flex items-center justify-center 
+                           bg-black/40 backdrop-blur-sm">
+                <div className="relative">
+                  <div className="absolute inset-0 animate-ping opacity-50">
+                    <div className="w-24 h-24 rounded-full bg-white/20"></div>
+                  </div>
+                  <div className="text-white text-6xl font-bold relative z-10">
+                    {countdown}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isStreaming && (
+              <div className="absolute inset-0 flex items-center justify-center 
+                           bg-purple-900/80 backdrop-blur-sm">
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="w-12 h-12 border-4 border-purple-200 border-t-transparent
+                               rounded-full animate-spin"></div>
+                  <p className="text-purple-200 text-lg">Starting camera...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Mode Toggle Button */}
+      <div className="mt-4 text-center">
+        <button
+          onClick={toggleMode}
+          className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-900/30 
+                   text-purple-200 rounded-lg hover:bg-purple-800/30 transition-colors"
+        >
+          {uploadMode ? (
+            <>
+              <CameraIcon className="w-5 h-5" />
+              <span>Switch to Camera</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-5 h-5" />
+              <span>Switch to Upload</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      <div className="mt-6 p-4 bg-purple-900/20 backdrop-blur-sm rounded-xl
+                    border border-purple-300/20">
+        <h3 className="text-white font-medium mb-2">Tips for Best Results:</h3>
+        <ul className="text-purple-200 text-sm space-y-2">
+          <li className="flex items-center">
+            <span className="mr-2">•</span>
+            Ensure your entire body is visible in the frame
+          </li>
+          <li className="flex items-center">
+            <span className="mr-2">•</span>
+            Find a well-lit area
+          </li>
+          <li className="flex items-center">
+            <span className="mr-2">•</span>
+            Keep a clear background if possible
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default CameraComponent;
