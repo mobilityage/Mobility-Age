@@ -1,19 +1,21 @@
+// src/pages/AssessmentPage.tsx
+
 import { useState } from 'react';
 import { MOBILITY_POSES } from '../types/assessment';
 import Camera from '@/components/Camera';
 import { PoseInstructions } from '@/components/PoseInstructions';
 import { PoseFeedback } from '@/components/PoseFeedback';
 import { CompletionScreen } from '@/components/CompletionScreen';
-import { analyzePose, AnalysisError } from '@/services/poseAnalysisService';
+import { analyzePose, AnalysisError, AnalysisResult } from '@/services/poseAnalysisService';
 
 type AssessmentState = 'instructions' | 'camera' | 'analysis' | 'complete';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
-  const [analyses, setAnalyses] = useState<any[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [assessmentState, setAssessmentState] = useState<AssessmentState>('instructions');
-  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +68,7 @@ export default function AssessmentPage() {
   };
 
   const getAverageAge = () => {
+    if (analyses.length === 0) return 0;
     return analyses.reduce((sum, a) => sum + a.mobilityAge, 0) / analyses.length;
   };
 
