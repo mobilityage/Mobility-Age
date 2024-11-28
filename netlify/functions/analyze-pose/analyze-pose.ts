@@ -37,9 +37,10 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
   console.log('Starting to parse content:', content);
 
   try {
-    // Extract mobility age
-    const ageMatch = content.match(/Mobility Age:\s*(\d+)/i);
+    // Extract mobility age - using the correct regex pattern
+    const ageMatch = content.match(/Age:\s*(\d+)/i);
     if (!ageMatch) {
+      console.log('Failed to find age in:', content);
       throw new AnalysisError('Could not determine mobility age from analysis');
     }
 
@@ -181,7 +182,7 @@ const handler: Handler = async (event) => {
 
     const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Include ALL of the following sections in your response:
 
-Mobility Age: [number between 20-80 based on form quality]
+Age: [number between 20-80 based on form quality]
 Form: [good/needs improvement]
 
 Form Analysis: [3-4 detailed sentences about their form, including specific observations about alignment, balance, and range of motion]
