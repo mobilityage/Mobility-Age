@@ -149,12 +149,10 @@ export default function AssessmentPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 relative">
-      {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(142,67,231,0.1),transparent)]" />
       </div>
 
-      {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-purple-900/50 z-50">
         <div 
           className="h-full bg-gradient-to-r from-purple-400 to-blue-400 transition-all duration-500"
@@ -165,7 +163,6 @@ export default function AssessmentPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header Section */}
         <div className="mb-8 text-center transition-all duration-300">
           <h1 className="text-3xl font-bold text-white mb-2">
             {assessmentState === 'complete' ? 'Assessment Complete' : 'Mobility Assessment'}
@@ -179,7 +176,6 @@ export default function AssessmentPage() {
           )}
         </div>
 
-        {/* Main Content */}
         <div className="relative">
           {error && (
             <div className="absolute top-0 left-0 right-0 -mt-4 transform -translate-y-full">
@@ -235,7 +231,6 @@ export default function AssessmentPage() {
           </div>
         </div>
 
-        {/* Progress Indicators */}
         {assessmentState !== 'complete' && (
           <div className="mt-8 flex justify-center space-x-2">
             {MOBILITY_POSES.map((_, index) => (
