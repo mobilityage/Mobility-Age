@@ -23,7 +23,12 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        photo: data.photo,
+        poseName: data.poseName,
+        poseDescription: data.poseDescription,
+        biologicalAge: data.biologicalAge  // Pass this through to the serverless function
+      })
     });
 
     console.log('Response status:', response.status);
