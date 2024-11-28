@@ -21,35 +21,6 @@ export function CompletionScreen({
 }: CompletionScreenProps) {
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
 
-  const getAgeComparison = () => {
-    if (!biologicalAge) return null;
-    const difference = averageAge - biologicalAge;
-    const getAssessment = () => {
-      if (difference <= -5) return "Your mobility is exceptionally good for your age!";
-      if (difference <= 0) return "Your mobility matches your biological age.";
-      if (difference <= 5) return "Your mobility shows room for improvement.";
-      return "Your mobility needs attention to better align with your age.";
-    };
-
-    const getColor = () => {
-      if (difference <= -5) return "text-green-200";
-      if (difference <= 0) return "text-blue-200";
-      if (difference <= 5) return "text-yellow-200";
-      return "text-red-200";
-    };
-
-    return (
-      <div className="mb-6 text-center">
-        <p className={`text-lg ${getColor()}`}>
-          {getAssessment()}
-        </p>
-        <p className="text-purple-200 mt-2">
-          Mobility Age: {Math.round(averageAge)} | Biological Age: {biologicalAge}
-        </p>
-      </div>
-    );
-  };
-
   const getProgressData = () => {
     return assessmentHistory.map(history => ({
       date: new Date(history.date).toLocaleDateString(),
@@ -70,6 +41,14 @@ export function CompletionScreen({
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-2">Assessment Complete!</h2>
           <p className="text-purple-200">Here's your mobility analysis</p>
+          {biologicalAge && (
+            <p className="text-lg mt-4 text-purple-200">
+              Biological Age: <span className="text-white font-medium">{biologicalAge}</span> | 
+              Mobility Age: <span className={`font-medium ${
+                averageAge <= biologicalAge ? 'text-green-400' : 'text-red-400'
+              }`}>{Math.round(averageAge)}</span>
+            </p>
+          )}
         </div>
 
         {/* Tabs */}
@@ -100,10 +79,8 @@ export function CompletionScreen({
 
         {selectedTab === 'summary' ? (
           <>
-            {getAgeComparison()}
-
             {/* Age Display */}
-            <div className="mb-12">
+            <div className="mb-12 text-center">
               <div className="inline-block rounded-full p-1 bg-gradient-to-r from-purple-500 to-blue-500">
                 <div className="bg-purple-900 rounded-full p-8">
                   <div className="text-5xl font-bold text-white mb-2">
@@ -118,7 +95,7 @@ export function CompletionScreen({
             <div className="grid gap-4 mb-8">
               {analyses.map((analysis, index) => (
                 <div key={index} className="bg-purple-800/20 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mb-2">
                     <span className="text-purple-200">{analysis.poseName}</span>
                     <span className="text-white font-medium">Age {analysis.mobilityAge}</span>
                   </div>
@@ -129,9 +106,25 @@ export function CompletionScreen({
                     />
                   </div>
 
+                  {/* Feedback and Recommendations */}
+                  <div className="mt-3 text-sm text-purple-200">
+                    <p>{analysis.feedback}</p>
+                    {analysis.recommendations.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {analysis.recommendations.map((rec, recIndex) => (
+                          <li key={recIndex} className="flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
                   {/* Exercise Recommendations */}
                   {analysis.exercises && analysis.exercises.length > 0 && (
                     <div className="mt-4">
+                      <h4 className="text-white font-medium mb-2">Recommended Exercises:</h4>
                       {analysis.exercises.map((exercise, exerciseIndex) => (
                         <div key={exerciseIndex} className="mt-2 text-sm">
                           <div className="flex justify-between items-start text-purple-200">
@@ -167,76 +160,84 @@ export function CompletionScreen({
           </>
         ) : (
           <div className="mb-8">
-            <div className="bg-purple-800/20 rounded-lg p-4 mb-6">
-              <h3 className="text-white font-medium mb-4">Mobility Progress</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={getProgressData()} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#E9D5FF" 
-                      fontSize={12}
-                      tickMargin={8}
-                    />
-                    <YAxis 
-                      stroke="#E9D5FF" 
-                      fontSize={12}
-                      tickMargin={8}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(88, 28, 135, 0.8)',
-                        border: '1px solid rgba(147, 51, 234, 0.3)',
-                        borderRadius: '8px',
-                        backdropFilter: 'blur(8px)',
-                      }}
-                      labelStyle={{ color: '#E9D5FF' }}
-                      itemStyle={{ color: '#E9D5FF' }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="age" 
-                      stroke="#9333EA" 
-                      strokeWidth={2}
-                      name="Mobility Age"
-                      dot={{ fill: '#9333EA', strokeWidth: 2 }}
-                    />
-                    {biologicalAge && (
-                      <Line 
-                        type="monotone" 
-                        dataKey="biological" 
-                        stroke="#60A5FA" 
-                        strokeWidth={2}
-                        name="Biological Age"
-                        strokeDasharray="4 4"
-                        dot={{ fill: '#60A5FA', strokeWidth: 2 }}
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-purple-800/20 rounded-lg p-4">
-              <h3 className="text-white font-medium mb-3">Progress Summary</h3>
-              {assessmentHistory.length > 1 ? (
-                <div className="space-y-2 text-purple-200">
-                  <p>
-                    Initial Mobility Age: {Math.round(assessmentHistory[0].averageAge)}
-                  </p>
-                  <p>
-                    Current Mobility Age: {Math.round(averageAge)}
-                  </p>
-                  <p>
-                    Total Improvement: {Math.round(assessmentHistory[0].averageAge - averageAge)} years
-                  </p>
+            {assessmentHistory.length > 0 ? (
+              <>
+                <div className="bg-purple-800/20 rounded-lg p-4 mb-6">
+                  <h3 className="text-white font-medium mb-4">Mobility Progress</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={getProgressData()} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#E9D5FF" 
+                          fontSize={12}
+                          tickMargin={8}
+                        />
+                        <YAxis 
+                          stroke="#E9D5FF" 
+                          fontSize={12}
+                          tickMargin={8}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(88, 28, 135, 0.8)',
+                            border: '1px solid rgba(147, 51, 234, 0.3)',
+                            borderRadius: '8px',
+                            backdropFilter: 'blur(8px)',
+                          }}
+                          labelStyle={{ color: '#E9D5FF' }}
+                          itemStyle={{ color: '#E9D5FF' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="age" 
+                          stroke="#9333EA" 
+                          strokeWidth={2}
+                          name="Mobility Age"
+                          dot={{ fill: '#9333EA', strokeWidth: 2 }}
+                        />
+                        {biologicalAge && (
+                          <Line 
+                            type="monotone" 
+                            dataKey="biological" 
+                            stroke="#60A5FA" 
+                            strokeWidth={2}
+                            name="Biological Age"
+                            strokeDasharray="4 4"
+                            dot={{ fill: '#60A5FA', strokeWidth: 2 }}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-              ) : (
-                <p className="text-purple-200">
-                  Complete more assessments to track your progress over time.
-                </p>
-              )}
-            </div>
+
+                <div className="bg-purple-800/20 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3">Progress Summary</h3>
+                  <div className="space-y-2 text-purple-200">
+                    <p>
+                      Initial Assessment: {new Date(assessmentHistory[0].date).toLocaleDateString()}
+                      <br />
+                      Initial Mobility Age: {Math.round(assessmentHistory[0].averageAge)}
+                    </p>
+                    <p>
+                      Latest Assessment: {new Date().toLocaleDateString()}
+                      <br />
+                      Current Mobility Age: {Math.round(averageAge)}
+                    </p>
+                    {assessmentHistory.length > 1 && (
+                      <p className="font-medium">
+                        Total Improvement: {Math.round(assessmentHistory[0].averageAge - averageAge)} years
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center text-purple-200 py-8">
+                Complete more assessments to track your progress over time.
+              </div>
+            )}
           </div>
         )}
 
