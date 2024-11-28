@@ -33,7 +33,17 @@ export function CompletionScreen({
     return new Date(dateString).toLocaleDateString();
   };
 
+  const calculateProgress = () => {
+    if (assessmentHistory.length < 2) return null;
+    const firstAssessment = assessmentHistory[0];
+    const latestAssessment = assessmentHistory[assessmentHistory.length - 1];
+    const improvement = firstAssessment.averageAge - latestAssessment.averageAge;
+    const days = Math.round((new Date(latestAssessment.date).getTime() - new Date(firstAssessment.date).getTime()) / (1000 * 60 * 60 * 24));
+    return { improvement, days };
+  };
+
   const ageDifference = getAgeDifference();
+  const progress = calculateProgress();
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
@@ -126,6 +136,16 @@ export function CompletionScreen({
                             </span>
                           )}
                         </p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {exercise.targetMuscles.map((muscle, muscleIndex) => (
+                            <span 
+                              key={muscleIndex}
+                              className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
+                            >
+                              {muscle}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -135,6 +155,18 @@ export function CompletionScreen({
           </div>
         ) : (
           <div className="space-y-4">
+            {progress && (
+              <div className="bg-purple-800/20 rounded-lg p-4 mb-6">
+                <h3 className="text-white font-medium mb-2">Progress Overview</h3>
+                <p className="text-purple-200 text-sm">
+                  Over {progress.days} days, your mobility age has {' '}
+                  <span className={progress.improvement > 0 ? 'text-green-400' : 'text-red-400'}>
+                    {progress.improvement > 0 ? 'improved by' : 'increased by'} {Math.abs(progress.improvement)} years
+                  </span>
+                </p>
+              </div>
+            )}
+
             {assessmentHistory.map((history, index) => (
               <div key={index} className="bg-purple-800/20 rounded-lg p-4">
                 <div className="flex justify-between items-center">
@@ -147,3 +179,31 @@ export function CompletionScreen({
                       </span>
                     )}
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="grid gap-4 mt-8">
+          <button
+            onClick={onRestart}
+            className="w-full bg-purple-600 text-white px-6 py-3 rounded-xl
+                     hover:bg-purple-500 transition-colors duration-300
+                     font-medium shadow-lg shadow-purple-900/50"
+          >
+            Start New Assessment
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="w-full bg-purple-800/30 text-purple-200 px-6 py-3 rounded-xl
+                     hover:bg-purple-700/30 transition-colors duration-300
+                     border border-purple-300/20"
+          >
+            Download Report
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
