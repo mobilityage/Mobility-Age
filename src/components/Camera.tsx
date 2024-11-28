@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
-import { Upload, Camera as CameraIcon, RefreshCw } from 'lucide-react';
+import { Upload, Camera as CameraIcon, RefreshCw, X, Check, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
+  currentPhoto: string | null;
 }
 
-const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
+const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -14,6 +16,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   const [countdown, setCountdown] = useState(5);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [uploadMode, setUploadMode] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
 
   const startCamera = async () => {
     try {
@@ -37,7 +40,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
   };
 
   useEffect(() => {
-    if (!uploadMode) {
+    if (!uploadMode && !currentPhoto && !previewPhoto) {
       startCamera();
     }
     return () => {
@@ -46,7 +49,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
         tracks.forEach(track => track.stop());
       }
     };
-  }, [facingMode, uploadMode]);
+  }, [facingMode, uploadMode, currentPhoto, previewPhoto]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
@@ -93,7 +96,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
       }
       context.drawImage(videoRef.current, 0, 0);
       const photoData = canvas.toDataURL('image/jpeg', 0.8);
-      onPhotoTaken(photoData);
+      setPreviewPhoto(photoData);
 
       const tracks = (videoRef.current.srcObject as MediaStream)?.getTracks();
       tracks?.forEach(track => track.stop());
@@ -111,7 +114,7 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const photoData = e.target?.result as string;
-        onPhotoTaken(photoData);
+        setPreviewPhoto(photoData);
       };
       reader.onerror = () => {
         setError('Error reading file');
@@ -120,9 +123,23 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
     }
   };
 
+  const handleConfirmPhoto = () => {
+    if (previewPhoto) {
+      onPhotoTaken(previewPhoto);
+    }
+  };
+
+  const handleRetakePhoto = () => {
+    setPreviewPhoto(null);
+    if (!uploadMode) {
+      startCamera();
+    }
+  };
+
   const toggleMode = () => {
     setUploadMode(!uploadMode);
     setError(null);
+    setPreviewPhoto(null);
     if (videoRef.current?.srcObject) {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
@@ -160,7 +177,34 @@ const CameraComponent = ({ onPhotoTaken }: CameraProps) => {
 
       <div className="relative rounded-2xl overflow-hidden bg-purple-900/20 backdrop-blur-sm
                     border border-purple-300/20 shadow-xl">
-        {uploadMode ? (
+        {previewPhoto ? (
+          <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
+            <img 
+              src={previewPhoto} 
+              alt="Preview" 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/70 via-transparent to-transparent">
+              <div className="p-4 w-full flex justify-center space-x-4">
+                <Button
+                  onClick={handleRetakePhoto}
+                  variant="outline"
+                  className="bg-white/10 backdrop-blur-sm border-white/20"
+                >
+                  <RotateCcw className="w-5 h-5 mr-2" />
+                  Retake
+                </Button>
+                <Button
+                  onClick={handleConfirmPhoto}
+                  className="bg-purple-600 hover:bg-purple-500"
+                >
+                  <Check className="w-5 h-5 mr-2" />
+                  Use Photo
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : uploadMode ? (
           <div className="aspect-[3/4] md:aspect-[4/3] w-full flex items-center justify-center">
             <input
               type="file"
