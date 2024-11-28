@@ -1,5 +1,3 @@
-// src/types/assessment.ts
-
 export interface PoseInstruction {
   name: string;
   description: string;
