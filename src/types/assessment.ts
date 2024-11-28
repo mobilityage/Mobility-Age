@@ -64,7 +64,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     ],
     duration: 5,
     targetAngle: 90,
-    cameraPosition: "Position your phone 6-8 feet away, at knee height, from your side",
+    cameraPosition: "Position your phone 2-3 metres away, at knee height, from your side",
     referenceImage: "/images/poses/deep-squat.jpg"
   },
   {
@@ -72,16 +72,16 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     description: "Tests shoulder flexibility, thoracic spine movement and functional asymmetry",
     setup: [
       "Stand straight facing away from the camera",
-      "We'll test both sides, starting with your right arm"
+      "Choose your worse performing side for better assessment"
     ],
     steps: [
-      "Reach your right arm over your shoulder",
-      "Reach your left arm behind your lower back",
+      "Reach one arm over your shoulder",
+      "Reach the other arm behind your lower back",
       "Try to touch your fingers together between your shoulder blades",
       "Hold the position when you reach your maximum range"
     ],
     duration: 3,
-    cameraPosition: "Position your phone 4-5 feet away, facing your back",
+    cameraPosition: "Position your phone 2-3 metres away, facing your back",
     referenceImage: "/images/poses/apley-scratch.jpg"
   },
   {
@@ -100,15 +100,15 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     ],
     duration: 3,
     targetAngle: 90,
-    cameraPosition: "Position your phone 4-5 feet away, at hip height, from your side",
+    cameraPosition: "Position your phone 2-3 metres away, at hip height, from your side",
     referenceImage: "/images/poses/forward-fold.jpg"
   },
   {
     name: "Knee to Wall Test",
     description: "Tests ankle mobility and dorsiflexion",
     setup: [
-      "Stand facing a wall, about 4 inches away",
-      "Place one foot approximately 4 inches (10cm) away from the wall and step the other foot back",
+      "Stand facing a wall, about 10cm away",
+      "Place one foot approximately 10cm away from the wall and step the other foot back",
       "Keep your heel firmly planted"
     ],
     steps: [
@@ -118,7 +118,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
       "Stop when your heel starts to lift or knee can't touch wall"
     ],
     duration: 3,
-    cameraPosition: "Position your phone 3-4 feet away, parallel to your side",
+    cameraPosition: "Position your phone 2-3 metres away, parallel to your side",
     referenceImage: "/images/poses/knee-wall.jpg"
   }
 ];
