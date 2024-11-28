@@ -1,19 +1,22 @@
 // src/components/PoseFeedback.tsx
 
 import { useState } from 'react';
-import { AnalysisResult } from '../services/poseAnalysisService';
+import { AnalysisResult } from '../types/assessment';
+import { Card } from '@/components/ui/card';
 
 interface PoseFeedbackProps {
   analysis: AnalysisResult;
   onContinue: () => void;
   onRetry: () => void;
+  photo: string | null;
+  biologicalAge: number | null;
 }
 
-export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProps) {
+export function PoseFeedback({ analysis, onContinue, onRetry, photo, biologicalAge }: PoseFeedbackProps) {
   const [activeTab, setActiveTab] = useState<'feedback' | 'exercises'>('feedback');
 
   const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
+    switch (difficulty.toLowerCase()) {
       case 'beginner':
         return 'bg-green-400/20 text-green-200 border-green-400/30';
       case 'intermediate':
@@ -25,11 +28,47 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
     }
   };
 
+  const getAgeComparisonDisplay = () => {
+    if (!biologicalAge) return null;
+    
+    const difference = analysis.mobilityAge - biologicalAge;
+    const getComparisonText = () => {
+      if (difference <= -5) return "Better than biological age";
+      if (difference <= 0) return "Matches biological age";
+      if (difference <= 5) return "Slightly above biological age";
+      return "Above biological age";
+    };
+
+    const getComparisonColor = () => {
+      if (difference <= -5) return "text-green-200 bg-green-500/20";
+      if (difference <= 0) return "text-blue-200 bg-blue-500/20";
+      if (difference <= 5) return "text-yellow-200 bg-yellow-500/20";
+      return "text-red-200 bg-red-500/20";
+    };
+
+    return (
+      <div className={`px-3 py-1.5 rounded-full text-sm font-medium ${getComparisonColor()}`}>
+        {getComparisonText()} ({difference > 0 ? '+' : ''}{difference} years)
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
       <div className="p-6">
+        {/* Photo Preview */}
+        {photo && (
+          <div className="mb-6 rounded-lg overflow-hidden border border-purple-300/20">
+            <img 
+              src={photo} 
+              alt="Pose analysis" 
+              className="w-full object-cover h-64"
+            />
+          </div>
+        )}
+
         {/* Header with Tabs */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex space-x-4">
             <button
               onClick={() => setActiveTab('feedback')}
@@ -52,13 +91,16 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
               Exercises
             </button>
           </div>
-          <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
-            analysis.isGoodForm 
-              ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
-              : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
-          }`}>
-            Mobility Age: {analysis.mobilityAge}
-          </span>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+              analysis.isGoodForm 
+                ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
+                : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
+            }`}>
+              Mobility Age: {analysis.mobilityAge}
+            </span>
+            {getAgeComparisonDisplay()}
+          </div>
         </div>
 
         {/* Analysis Tab Content */}
@@ -118,18 +160,44 @@ export function PoseFeedback({ analysis, onContinue, onRetry }: PoseFeedbackProp
                     </span>
                   </div>
                   <p className="text-purple-100 mb-3">{exercise.description}</p>
-                  <div className="flex flex-wrap gap-3 text-sm">
+                  
+                  {/* Exercise Steps */}
+                  {exercise.steps && exercise.steps.length > 0 && (
+                    <div className="mb-4">
+                      <h5 className="text-white text-sm font-medium mb-2">Steps:</h5>
+                      <ol className="space-y-2">
+                        {exercise.steps.map((step, stepIndex) => (
+                          <li key={stepIndex} className="text-purple-200 text-sm flex items-start">
+                            <span className="w-5 flex-shrink-0">{stepIndex + 1}.</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
                     {exercise.sets && exercise.reps && (
-                      <span className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200">
+                      <span className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
                         {exercise.sets} sets × {exercise.reps} reps
                       </span>
                     )}
-                    {exercise.targetMuscles.map((muscle, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200">
-                        {muscle}
+                    {exercise.frequency && (
+                      <span className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
+                        {exercise.frequency}
                       </span>
-                    ))}
+                    )}
                   </div>
+
+                  {exercise.targetMuscles && exercise.targetMuscles.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {exercise.targetMuscles.map((muscle, idx) => (
+                        <span key={idx} className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
+                          {muscle}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
