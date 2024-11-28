@@ -17,10 +17,7 @@ export interface Exercise {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   sets?: number;
   reps?: number;
-  steps: string[];
-  frequency: string;
   targetMuscles: string[];
-  progressionMetrics?: string;
 }
 
 export interface AnalysisResult {
@@ -30,23 +27,17 @@ export interface AnalysisResult {
   isGoodForm: boolean;
   exercises: Exercise[];
   poseName: string;
-  comparativeAge?: {
-    difference: number;
-    assessment: string;
-  };
 }
 
 export interface PoseAnalysis {
   photo: string;
   poseName: string;
   poseDescription: string;
-  biologicalAge?: number;
 }
 
 export interface AssessmentHistory {
   date: string;
   averageAge: number;
-  biologicalAge?: number;
   analyses: AnalysisResult[];
 }
 
