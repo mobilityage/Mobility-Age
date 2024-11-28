@@ -37,11 +37,25 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
   console.log('Starting to parse content:', content);
 
   try {
-    // Extract mobility age - using the correct regex pattern
+    // Extract mobility age
     const ageMatch = content.match(/Age:\s*(\d+)/i);
     if (!ageMatch) {
       console.log('Failed to find age in:', content);
-      throw new AnalysisError('Could not determine mobility age from analysis');
+      return {
+        mobilityAge: 30,
+        feedback: "Unable to determine specific feedback from the pose.",
+        recommendations: ["Consult with a physiotherapist for proper form assessment"],
+        isGoodForm: false,
+        exercises: [{
+          name: 'Basic Form Practice',
+          description: 'Practice the basic movement pattern',
+          difficulty: 'beginner',
+          steps: ['Practice proper form'],
+          frequency: '3 times per week',
+          targetMuscles: ['full body']
+        }],
+        poseName
+      };
     }
 
     const mobilityAge = parseInt(ageMatch[1]);
@@ -50,12 +64,12 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
     const isGoodForm = content.toLowerCase().includes('form: good') || 
                       content.toLowerCase().includes('good form');
 
-    // Extract detailed feedback
-    const feedbackMatch = content.match(/Form Analysis:\s*([^]*?)(?=\n\s*(?:Specific Recommendations:|$))/i);
+    // Extract feedback
+    const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
     const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
 
     // Extract recommendations
-    const recommendationsMatch = content.match(/Specific Recommendations:\s*([^]*?)(?=\n\s*(?:Improvement Exercises:|$))/i);
+    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:$|Exercise))/i);
     const recommendations = recommendationsMatch 
       ? recommendationsMatch[1]
           .split('\n')
@@ -63,54 +77,49 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
           .filter(line => line.length > 0)
       : ['Practice proper form'];
 
-    // Extract exercises
-    const exercisesSection = content.match(/Improvement Exercises:\s*([^]*?)(?=\n\s*(?:$|Progress Tracking:))/i);
-    const exerciseBlocks = exercisesSection ? exercisesSection[1].split(/Exercise \d+:/g).filter(Boolean) : [];
-    
-    const exercises = exerciseBlocks.map(block => {
-      const nameMatch = block.match(/Name:\s*([^\n]+)/);
-      const descriptionMatch = block.match(/Description:\s*([^\n]+)/);
-      const difficultyMatch = block.match(/Difficulty:\s*(beginner|intermediate|advanced)/i);
-      const setsMatch = block.match(/Sets:\s*(\d+)/);
-      const repsMatch = block.match(/Reps:\s*(\d+)/);
-      const frequencyMatch = block.match(/Frequency:\s*([^\n]+)/);
-      const stepsMatch = block.match(/Steps:\s*([^]*?)(?=\n\s*(?:Target Muscles:|Frequency:|$))/i);
-      const targetMusclesMatch = block.match(/Target Muscles:\s*([^\n]+)/);
-      const progressionMatch = block.match(/Progression Metrics:\s*([^\n]+)/);
+    // Extract exercises if available
+    const exercisesSection = content.match(/Exercise\s+\d+:\s*([^]*?)(?=\n\s*(?:Exercise\s+\d+:|$))/gi);
+    let exercises = exercisesSection ? exercisesSection.map(section => {
+      const nameMatch = section.match(/Name:\s*([^\n]+)/i);
+      const descMatch = section.match(/Description:\s*([^\n]+)/i);
+      const difficultyMatch = section.match(/Difficulty:\s*(beginner|intermediate|advanced)/i);
+      const setsMatch = section.match(/Sets:\s*(\d+)/i);
+      const repsMatch = section.match(/Reps:\s*(\d+)/i);
+      const stepsMatch = section.match(/Steps:\s*([^]*?)(?=\n\s*(?:Target|Frequency|$))/i);
+      const frequencyMatch = section.match(/Frequency:\s*([^\n]+)/i);
+      const musclesMatch = section.match(/Target Muscles:\s*([^\n]+)/i);
+      const progressionMatch = section.match(/Progression Metrics:\s*([^\n]+)/i);
 
       return {
-        name: nameMatch ? nameMatch[1].trim() : 'Form Exercise',
-        description: descriptionMatch ? descriptionMatch[1].trim() : 'Practice proper form',
+        name: nameMatch ? nameMatch[1].trim() : 'Form Practice',
+        description: descMatch ? descMatch[1].trim() : 'Practice the movement with proper form',
         difficulty: (difficultyMatch ? difficultyMatch[1].toLowerCase() : 'beginner') as 'beginner' | 'intermediate' | 'advanced',
         sets: setsMatch ? parseInt(setsMatch[1]) : undefined,
         reps: repsMatch ? parseInt(repsMatch[1]) : undefined,
         steps: stepsMatch 
-          ? stepsMatch[1]
-              .split('\n')
-              .map(step => step.replace(/^[-•*]\s*/, '').trim())
-              .filter(step => step.length > 0)
-          : ['Practice the basic movement'],
+          ? stepsMatch[1].split('\n').map(s => s.replace(/^[-•*]\s*/, '').trim()).filter(s => s)
+          : ['Practice proper form'],
         frequency: frequencyMatch ? frequencyMatch[1].trim() : '3 times per week',
-        targetMuscles: targetMusclesMatch 
-          ? targetMusclesMatch[1].split(',').map(muscle => muscle.trim())
+        targetMuscles: musclesMatch 
+          ? musclesMatch[1].split(',').map(m => m.trim())
           : ['full body'],
         progressionMetrics: progressionMatch ? progressionMatch[1].trim() : undefined
       };
-    });
+    }) : [];
 
-    // If no exercises were parsed, provide a default exercise
+    // Add default exercise if none found
     if (exercises.length === 0) {
-      exercises.push({
-        name: 'Basic Form Practice',
-        description: 'Practice the basic movement pattern',
+      exercises = [{
+        name: 'Form Practice',
+        description: 'Practice the movement with proper form',
         difficulty: 'beginner',
-        steps: ['Practice the basic movement with proper form'],
+        steps: ['Practice proper form'],
         frequency: '3 times per week',
         targetMuscles: ['full body']
-      });
+      }];
     }
 
-    // Add comparative age analysis if biological age is provided
+    // Add comparative age analysis if biological age provided
     let comparativeAge;
     if (biologicalAge !== undefined) {
       const difference = mobilityAge - biologicalAge;
@@ -136,7 +145,27 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
     };
   } catch (error) {
     console.error('Parse error:', error);
-    throw error;
+    console.error('Raw content:', content);
+    // Return default values instead of throwing
+    return {
+      mobilityAge: 30,
+      feedback: "Unable to analyze the pose properly.",
+      recommendations: ["Consult with a physiotherapist for proper form assessment"],
+      isGoodForm: false,
+      exercises: [{
+        name: 'Basic Form Practice',
+        description: 'Practice the basic movement pattern',
+        difficulty: 'beginner',
+        steps: ['Practice proper form'],
+        frequency: '3 times per week',
+        targetMuscles: ['full body']
+      }],
+      poseName,
+      comparativeAge: biologicalAge ? {
+        difference: 30 - biologicalAge,
+        assessment: "Unable to accurately assess mobility age comparison"
+      } : undefined
+    };
   }
 };
 
@@ -173,6 +202,14 @@ const handler: Handler = async (event) => {
       throw new AnalysisError('Missing required fields: photo or poseName');
     }
 
+    // Add logging for photo data check
+    console.log('Photo data check:', {
+      originalLength: photo.length,
+      hasPrefix: photo.startsWith('data:image'),
+      prefixType: photo.startsWith('data:image/jpeg;base64,') ? 'jpeg' : 
+                 photo.startsWith('data:image/png;base64,') ? 'png' : 'other'
+    });
+
     // Remove data:image prefix if it exists
     if (photo.startsWith('data:image')) {
       photo = photo.split(',')[1];
@@ -180,17 +217,16 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Include ALL of the following sections in your response:
+    const systemPrompt = `You are a physiotherapist analyzing a mobility pose. Respond EXACTLY in this format:
 
-Age: [number between 20-80 based on form quality]
+Age: [number between 20-80]
 Form: [good/needs improvement]
+Feedback: [2-3 sentences about their form]
+Recommendations:
+- [improvement 1]
+- [improvement 2]
+- [improvement 3]
 
-Form Analysis: [3-4 detailed sentences about their form, including specific observations about alignment, balance, and range of motion]
-
-Specific Recommendations:
-- [3-5 detailed, actionable improvements]
-
-Improvement Exercises:
 Exercise 1:
 Name: [specific exercise name]
 Description: [1-2 sentences]
@@ -198,18 +234,12 @@ Difficulty: [beginner/intermediate/advanced]
 Sets: [number]
 Reps: [number]
 Steps:
-- [detailed step 1]
-- [detailed step 2]
-- [detailed step 3]
-Target Muscles: [primary muscles targeted]
+- [step 1]
+- [step 2]
+- [step 3]
+Target Muscles: [main muscle groups]
 Frequency: [how often to perform]
-Progression Metrics: [how to know when to increase difficulty]
-
-Exercise 2:
-[same format as above]
-
-Progress Tracking:
-[2-3 sentences about what improvements to look for over time]`;
+Progression Metrics: [how to progress]`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -234,7 +264,7 @@ Progress Tracking:
           ]
         }
       ],
-      max_tokens: 1500
+      max_tokens: 1000
     });
 
     console.log('Received response from OpenAI');
@@ -245,6 +275,13 @@ Progress Tracking:
     }
 
     console.log('Raw API response:', content);
+    console.log('Response structure check:', {
+      hasAge: content.match(/Age:\s*(\d+)/i) !== null,
+      hasForm: content.toLowerCase().includes('form:'),
+      hasFeedback: content.toLowerCase().includes('feedback:'),
+      hasRecommendations: content.toLowerCase().includes('recommendations:'),
+      hasExercises: content.toLowerCase().includes('exercise 1:')
+    });
 
     const result = parseContent(content, poseName, biologicalAge);
 
