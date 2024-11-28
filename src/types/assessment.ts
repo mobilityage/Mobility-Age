@@ -42,12 +42,12 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     setup: [
       "Stand with feet shoulder-width apart",
       "Point your toes slightly outward",
-      "Hold your arms straight overhead"
+      "Hold your arms straight out in front"
     ],
     steps: [
       "Keep your heels firmly on the ground",
       "Squat down as low as you comfortably can",
-      "Keep your chest up and arms overhead",
+      "Keep your chest up and arms out in front",
       "Try to get your thighs parallel to the ground or lower"
     ],
     duration: 5,
@@ -96,7 +96,7 @@ export const MOBILITY_POSES: PoseInstruction[] = [
     description: "Tests ankle mobility and dorsiflexion",
     setup: [
       "Stand facing a wall, about 4 inches away",
-      "Place one foot approximately 4 inches (10cm) away from the wall",
+      "Place one foot approximately 4 inches (10cm) away from the wall and step the other foot back",
       "Keep your heel firmly planted"
     ],
     steps: [
