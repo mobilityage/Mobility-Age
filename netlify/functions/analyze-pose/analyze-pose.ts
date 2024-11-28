@@ -1,5 +1,3 @@
-// netlify/functions/analyze-pose.ts
-
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
 
@@ -43,8 +41,12 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
       console.log('Failed to find age in:', content);
       return {
         mobilityAge: 30,
-        feedback: "Unable to determine specific feedback from the pose.",
-        recommendations: ["Consult with a physiotherapist for proper form assessment"],
+        feedback: "I couldn't determine your mobility age from the image. Please ensure your entire body is visible and well-lit.",
+        recommendations: [
+          "Make sure to capture the full pose in a well-lit area.",
+          "Try to keep the camera steady and at eye level.",
+          "If possible, use a plain background to avoid distractions."
+        ],
         isGoodForm: false,
         exercises: [{
           name: 'Basic Form Practice',
@@ -62,11 +64,11 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
 
     // Extract form assessment
     const isGoodForm = content.toLowerCase().includes('form: good') || 
-                      content.toLowerCase().includes('good form');
+    content.toLowerCase().includes('good form');
 
     // Extract feedback
     const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
-    const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
+    const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed. Please ensure your pose is clear and visible.';
 
     // Extract recommendations
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:$|Exercise))/i);
@@ -126,11 +128,11 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
       const assessment = difference <= -5 
         ? "Your mobility is notably better than your biological age - keep up the great work!" 
         : difference <= 0 
-          ? "Your mobility matches or slightly exceeds your biological age" 
+          ? "Your mobility matches or slightly exceeds your biological age." 
           : difference <= 5 
-            ? "Your mobility shows room for improvement compared to your biological age" 
-            : "Your mobility needs attention to better align with your biological age";
-      
+            ? "Your mobility shows room for improvement compared to your biological age." 
+            : "Your mobility needs attention to better align with your biological age.";
+
       comparativeAge = { difference, assessment };
     }
 
@@ -149,8 +151,12 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
     // Return default values instead of throwing
     return {
       mobilityAge: 30,
-      feedback: "Unable to analyze the pose properly.",
-      recommendations: ["Consult with a physiotherapist for proper form assessment"],
+      feedback: "Unable to analyze the pose properly. Please ensure your entire body is visible and well-lit.",
+      recommendations: [
+        "Make sure to capture the full pose in a well-lit area.",
+        "Try to keep the camera steady and at eye level.",
+        "If possible, use a plain background to avoid distractions."
+      ],
       isGoodForm: false,
       exercises: [{
         name: 'Basic Form Practice',
@@ -163,7 +169,7 @@ const parseContent = (content: string, poseName: string, biologicalAge?: number)
       poseName,
       comparativeAge: biologicalAge ? {
         difference: 30 - biologicalAge,
-        assessment: "Unable to accurately assess mobility age comparison"
+        assessment: "Unable to accurately assess mobility age comparison."
       } : undefined
     };
   }
@@ -207,7 +213,7 @@ const handler: Handler = async (event) => {
       originalLength: photo.length,
       hasPrefix: photo.startsWith('data:image'),
       prefixType: photo.startsWith('data:image/jpeg;base64,') ? 'jpeg' : 
-                 photo.startsWith('data:image/png;base64,') ? 'png' : 'other'
+      photo.startsWith('data:image/png;base64,') ? 'png' : 'other'
     });
 
     // Remove data:image prefix if it exists
