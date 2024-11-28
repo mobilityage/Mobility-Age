@@ -1,6 +1,7 @@
+// src/pages/AssessmentPage.tsx
+
 import { useState, useEffect } from 'react';
-import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
-import { MOBILITY_POSES } from '../types/assessment';
+import { MOBILITY_POSES, type AnalysisResult, type AssessmentHistory } from '../types/assessment';
 import Camera from '../components/Camera';
 import { PoseInstructions } from '../components/PoseInstructions';
 import { PoseFeedback } from '../components/PoseFeedback';
@@ -58,18 +59,13 @@ export default function AssessmentPage() {
     return Math.round(analyses.reduce((sum, a) => sum + a.mobilityAge, 0) / analyses.length);
   };
 
-  const handleStartPose = () => {
-    setError(null);
-    setAssessmentState('camera');
-  };
-
   const handlePhotoTaken = async (photoData: string) => {
     if (!biologicalAge) return;
-
+    
     setCurrentPhoto(photoData);
     setIsLoading(true);
     setError(null);
-
+    
     try {
       const analysis = await analyzePose({
         photo: photoData,
@@ -77,7 +73,7 @@ export default function AssessmentPage() {
         poseDescription: currentPoseData.description,
         biologicalAge
       });
-
+      
       setPhotos([...photos, photoData]);
       setAnalyses([...analyses, analysis]);
       setCurrentAnalysis(analysis);
@@ -133,14 +129,14 @@ export default function AssessmentPage() {
               max="100"
               placeholder="Enter your age"
               className="w-full px-4 py-2 bg-purple-900/50 border border-purple-300/20 rounded-lg 
-              text-white placeholder-purple-300 mb-4"
+                       text-white placeholder-purple-300 mb-4"
               onChange={(e) => setBiologicalAge(parseInt(e.target.value))}
             />
             <button 
               type="submit"
               className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg
-              hover:bg-purple-500 transition-all duration-300
-              disabled:opacity-50 disabled:cursor-not-allowed"
+                       hover:bg-purple-500 transition-all duration-300
+                       disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!biologicalAge || biologicalAge < 18 || biologicalAge > 100}
             >
               Start Assessment
@@ -164,7 +160,7 @@ export default function AssessmentPage() {
           className="h-full bg-gradient-to-r from-purple-400 to-blue-400 transition-all duration-500"
           style={{ 
             width: `${((currentPose + (assessmentState === 'analysis' ? 1 : 0)) / MOBILITY_POSES.length) * 100}%` 
-            }}
+          }}
         />
       </div>
 
@@ -196,9 +192,9 @@ export default function AssessmentPage() {
           <div className="transition-all duration-300 transform">
             {isLoading ? (
               <div className="bg-purple-900/20 backdrop-blur-sm rounded-2xl p-12 text-center 
-              border border-purple-300/20">
+                            border border-purple-300/20">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 
-                border-4 border-white border-t-transparent mb-4" />
+                              border-4 border-white border-t-transparent mb-4" />
                 <p className="text-xl text-white font-medium">Analyzing your form...</p>
                 <p className="text-purple-200 mt-2">This will take just a moment</p>
               </div>
@@ -207,7 +203,7 @@ export default function AssessmentPage() {
                 {assessmentState === 'instructions' && (
                   <PoseInstructions 
                     poseData={currentPoseData}
-                    onStartPose={handleStartPose}
+                    onStartPose={() => setAssessmentState('camera')}
                   />
                 )}
                 {assessmentState === 'camera' && (
@@ -249,8 +245,8 @@ export default function AssessmentPage() {
                   index < currentPose 
                     ? 'bg-purple-400' 
                     : index === currentPose
-                    ? 'bg-white w-4'
-                    : 'bg-purple-700'
+                      ? 'bg-white w-4'
+                      : 'bg-purple-700'
                 }`}
               />
             ))}
