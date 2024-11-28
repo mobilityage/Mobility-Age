@@ -1,3 +1,5 @@
+// src/components/PoseFeedback.tsx
+
 import { useState } from 'react';
 import type { AnalysisResult } from '../types/assessment';
 
@@ -6,15 +8,13 @@ interface PoseFeedbackProps {
   onContinue: () => void;
   onRetry: () => void;
   photo: string | null;
-  biologicalAge: number | null;
 }
 
 export function PoseFeedback({ 
   analysis, 
   onContinue, 
   onRetry,
-  photo,
-  biologicalAge
+  photo
 }: PoseFeedbackProps) {
   const [activeTab, setActiveTab] = useState<'feedback' | 'exercises'>('feedback');
 
@@ -30,23 +30,6 @@ export function PoseFeedback({
         return 'bg-purple-400/20 text-purple-200 border-purple-400/30';
     }
   };
-
-  const getAgeComparison = () => {
-    if (!biologicalAge) return null;
-    const difference = analysis.mobilityAge - biologicalAge;
-
-    if (difference <= -5) {
-      return { text: "Your mobility is better than your biological age", color: "text-green-200" };
-    } else if (difference <= 0) {
-      return { text: "Your mobility matches your biological age", color: "text-blue-200" };
-    } else if (difference <= 5) {
-      return { text: "Your mobility could use some improvement", color: "text-yellow-200" };
-    } else {
-      return { text: "Your mobility needs attention", color: "text-red-200" };
-    }
-  };
-
-  const ageComparison = getAgeComparison();
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
@@ -86,20 +69,13 @@ export function PoseFeedback({
               Exercises
             </button>
           </div>
-          <div className="flex flex-col items-end space-y-2">
-            <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
-              analysis.isGoodForm 
-                ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
-                : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
-            }`}>
-              Mobility Age: {analysis.mobilityAge}
-            </span>
-            {ageComparison && (
-              <span className={`text-sm ${ageComparison.color}`}>
-                {ageComparison.text}
-              </span>
-            )}
-          </div>
+          <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
+            analysis.isGoodForm 
+              ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
+              : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
+          }`}>
+            Mobility Age: {analysis.mobilityAge}
+          </span>
         </div>
 
         {/* Analysis Tab Content */}
@@ -159,50 +135,21 @@ export function PoseFeedback({
                     </span>
                   </div>
                   <p className="text-purple-100 mb-3">{exercise.description}</p>
-
-                  {/* Exercise Steps */}
-                  {exercise.steps && exercise.steps.length > 0 && (
-                    <div className="mb-3">
-                      <h5 className="text-white text-sm font-medium mb-2">Steps:</h5>
-                      <ol className="space-y-2">
-                        {exercise.steps.map((step, stepIndex) => (
-                          <li key={stepIndex} className="text-purple-200 text-sm flex items-start">
-                            <span className="w-5 flex-shrink-0">{stepIndex + 1}.</span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-
                   <div className="flex flex-wrap gap-2">
                     {exercise.sets && exercise.reps && (
                       <span className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
                         {exercise.sets} sets × {exercise.reps} reps
                       </span>
                     )}
-                    {exercise.frequency && (
-                      <span className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
-                        {exercise.frequency}
-                      </span>
-                    )}
                   </div>
 
-                  {exercise.targetMuscles && exercise.targetMuscles.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {exercise.targetMuscles.map((muscle, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
-                          {muscle}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {exercise.progressionMetrics && (
-                    <div className="mt-3 text-sm text-purple-200">
-                      <strong className="text-white">Progress:</strong> {exercise.progressionMetrics}
-                    </div>
-                  )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {exercise.targetMuscles.map((muscle, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-purple-900/30 rounded-full text-purple-200 text-sm">
+                        {muscle}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -215,7 +162,7 @@ export function PoseFeedback({
             <button
               onClick={onRetry}
               className="flex-1 px-4 py-2.5 border border-purple-300/20 text-purple-100 rounded-lg
-              hover:bg-purple-800/30 active:bg-purple-700/30 transition-colors"
+                       hover:bg-purple-800/30 active:bg-purple-700/30 transition-colors"
             >
               Try Again
             </button>
@@ -223,8 +170,8 @@ export function PoseFeedback({
           <button
             onClick={onContinue}
             className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg
-            hover:bg-purple-500 active:bg-purple-700 transition-colors
-            shadow-lg shadow-purple-900/50"
+                     hover:bg-purple-500 active:bg-purple-700 transition-colors
+                     shadow-lg shadow-purple-900/50"
           >
             {analysis.isGoodForm ? 'Continue' : 'Continue Anyway'}
           </button>
