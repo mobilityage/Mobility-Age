@@ -8,19 +8,32 @@ interface CompletionScreenProps {
   analyses: AnalysisResult[];
   onRestart: () => void;
   assessmentHistory: AssessmentHistory[];
+  biologicalAge: number | null;
 }
 
 export function CompletionScreen({ 
   averageAge, 
   analyses, 
   onRestart, 
-  assessmentHistory 
+  assessmentHistory,
+  biologicalAge
 }: CompletionScreenProps) {
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
+
+  const getAgeDifference = () => {
+    if (!biologicalAge) return null;
+    const diff = averageAge - biologicalAge;
+    if (diff <= -5) return { text: "Your mobility is exceptional!", color: "text-green-400" };
+    if (diff <= 0) return { text: "Your mobility matches your age", color: "text-green-200" };
+    if (diff <= 5) return { text: "Your mobility needs some work", color: "text-yellow-200" };
+    return { text: "Your mobility needs attention", color: "text-red-200" };
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
+
+  const ageDifference = getAgeDifference();
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
@@ -28,9 +41,13 @@ export function CompletionScreen({
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-white mb-2">Assessment Complete!</h2>
           <p className="text-purple-200">Your Mobility Analysis</p>
+          {biologicalAge && ageDifference && (
+            <p className={`text-lg mt-4 ${ageDifference.color}`}>
+              {ageDifference.text}
+            </p>
+          )}
         </div>
 
-        {/* Age Score */}
         <div className="mb-8 text-center">
           <div className="inline-block rounded-full p-1 bg-gradient-to-r from-purple-500 to-blue-500">
             <div className="bg-purple-900 rounded-full p-8">
@@ -38,11 +55,15 @@ export function CompletionScreen({
                 {Math.round(averageAge)}
               </div>
               <div className="text-purple-200">Mobility Age</div>
+              {biologicalAge && (
+                <div className="text-sm text-purple-300 mt-1">
+                  Biological Age: {biologicalAge}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex justify-center mb-6">
           <div className="bg-purple-900/30 rounded-lg p-1 inline-flex">
             <button
@@ -118,33 +139,11 @@ export function CompletionScreen({
               <div key={index} className="bg-purple-800/20 rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-purple-200">{formatDate(history.date)}</span>
-                  <span className="text-white font-medium">Age {Math.round(history.averageAge)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="grid gap-4 mt-8">
-          <button
-            onClick={onRestart}
-            className="w-full bg-purple-600 text-white px-6 py-3 rounded-xl
-                     hover:bg-purple-500 transition-colors duration-300
-                     font-medium shadow-lg shadow-purple-900/50"
-          >
-            Start New Assessment
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="w-full bg-purple-800/30 text-purple-200 px-6 py-3 rounded-xl
-                     hover:bg-purple-700/30 transition-colors duration-300
-                     border border-purple-300/20"
-          >
-            Download Report
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+                  <div className="text-right">
+                    <span className="text-white font-medium">Age {Math.round(history.averageAge)}</span>
+                    {history.biologicalAge && (
+                      <span className="text-purple-300 text-sm ml-2">
+                        (Bio: {history.biologicalAge})
+                      </span>
+                    )}
+                  </div>
