@@ -20,42 +20,57 @@ export function CompletionScreen({
 }: CompletionScreenProps) {
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
 
-  const getProgressSummary = () => {
-    if (assessmentHistory.length <= 1) {
-      return "Complete more assessments to track your progress over time.";
-    }
+  const getAgeDifference = () => {
+    if (!biologicalAge) return null;
+    const diff = averageAge - biologicalAge;
+    if (diff <= -5) return { text: "Exceptional mobility for your age!", color: "text-green-400" };
+    if (diff <= 0) return { text: "Good mobility for your age", color: "text-green-200" };
+    if (diff <= 5) return { text: "Room for improvement", color: "text-yellow-200" };
+    return { text: "Needs attention", color: "text-red-200" };
+  };
 
-    const firstAssessment = assessmentHistory[0];
-    const improvement = firstAssessment.averageAge - averageAge;
-    const timeElapsed = Math.round((new Date().getTime() - new Date(firstAssessment.date).getTime()) / (1000 * 60 * 60 * 24));
+  const ageDifference = getAgeDifference();
 
-    return `You've improved by ${improvement.toFixed(1)} years over ${timeElapsed} days.`;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-purple-900/20 backdrop-blur-sm border border-purple-300/20">
-      {/* Animated Background */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-500/20 animate-pulse" />
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-      </div>
-
       <div className="relative p-8">
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-2">Assessment Complete!</h2>
           <p className="text-purple-200">Here's your mobility analysis</p>
-          {biologicalAge && (
-            <p className="text-lg mt-4 text-purple-200">
-              Biological Age: <span className="text-white font-medium">{biologicalAge}</span> | 
-              Mobility Age: <span className={`font-medium ${
-                averageAge <= biologicalAge ? 'text-green-400' : 'text-red-400'
-              }`}>{Math.round(averageAge)}</span>
+          {biologicalAge && ageDifference && (
+            <p className="text-lg mt-4">
+              <span className={ageDifference.color}>{ageDifference.text}</span>
             </p>
           )}
         </div>
 
+        {/* Age Display */}
+        <div className="mb-12 text-center">
+          <div className="inline-block rounded-full p-1 bg-gradient-to-r from-purple-500 to-blue-500">
+            <div className="bg-purple-900 rounded-full p-8">
+              <div className="text-5xl font-bold text-white mb-2">
+                {Math.round(averageAge)}
+              </div>
+              <div className="text-purple-200">Mobility Age</div>
+              {biologicalAge && (
+                <div className="text-sm text-purple-300 mt-1">
+                  Biological Age: {biologicalAge}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6">
           <div className="bg-purple-900/30 rounded-lg p-1 inline-flex">
             <button
               onClick={() => setSelectedTab('summary')}
@@ -81,133 +96,86 @@ export function CompletionScreen({
         </div>
 
         {selectedTab === 'summary' ? (
-          <>
-            {/* Age Display */}
-            <div className="mb-12 text-center">
-              <div className="inline-block rounded-full p-1 bg-gradient-to-r from-purple-500 to-blue-500">
-                <div className="bg-purple-900 rounded-full p-8">
-                  <div className="text-5xl font-bold text-white mb-2">
-                    {Math.round(averageAge)}
-                  </div>
-                  <div className="text-purple-200">Mobility Age</div>
+          <div className="space-y-6">
+            {/* Pose Results */}
+            {analyses.map((analysis, index) => (
+              <div key={index} className="bg-purple-800/20 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-white font-medium">{analysis.poseName}</h3>
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    analysis.isGoodForm ? 'bg-green-400/20 text-green-200' : 'bg-yellow-400/20 text-yellow-200'
+                  }`}>
+                    Age {analysis.mobilityAge}
+                  </span>
                 </div>
-              </div>
-            </div>
 
-            {/* Pose Breakdown */}
-            <div className="grid gap-4 mb-8">
-              {analyses.map((analysis, index) => (
-                <div key={index} className="bg-purple-800/20 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-purple-200">{analysis.poseName}</span>
-                    <span className="text-white font-medium">Age {analysis.mobilityAge}</span>
-                  </div>
-                  <div className="mt-2 h-1.5 bg-purple-900/40 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-purple-400 to-blue-400"
-                      style={{ width: `${Math.max(0, 100 - analysis.mobilityAge)}%` }}
-                    />
-                  </div>
+                <p className="text-purple-200 text-sm mb-3">{analysis.feedback}</p>
 
-                  {/* Feedback and Recommendations */}
-                  <div className="mt-3 text-sm text-purple-200">
-                    <p>{analysis.feedback}</p>
-                    {analysis.recommendations.length > 0 && (
-                      <ul className="mt-2 space-y-1">
-                        {analysis.recommendations.map((rec, recIndex) => (
-                          <li key={recIndex} className="flex items-start">
-                            <span className="mr-2">•</span>
-                            <span>{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
+                {analysis.recommendations.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="text-white text-sm font-medium mb-2">Recommendations:</h4>
+                    <ul className="space-y-1">
+                      {analysis.recommendations.map((rec, recIndex) => (
+                        <li key={recIndex} className="text-purple-200 text-sm flex">
+                          <span className="mr-2">•</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analysis.exercises.map((exercise, exIndex) => (
+                  <div key={exIndex} className="mt-4 bg-purple-900/30 rounded-lg p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="text-white text-sm font-medium">{exercise.name}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-purple-800/50 text-purple-200">
+                        {exercise.difficulty}
+                      </span>
+                    </div>
+                    <p className="text-purple-200 text-sm mb-2">{exercise.description}</p>
+                    {exercise.frequency && (
+                      <p className="text-purple-300 text-xs">Frequency: {exercise.frequency}</p>
                     )}
                   </div>
-
-                  {/* Exercise Recommendations */}
-                  {analysis.exercises && analysis.exercises.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="text-white font-medium mb-2">Recommended Exercises:</h4>
-                      {analysis.exercises.map((exercise, exerciseIndex) => (
-                        <div key={exerciseIndex} className="mt-2 text-sm">
-                          <div className="flex justify-between items-start text-purple-200">
-                            <span>{exercise.name}</span>
-                            <span className="text-xs bg-purple-700/50 px-2 py-1 rounded-full">
-                              {exercise.difficulty}
-                            </span>
-                          </div>
-                          {exercise.frequency && (
-                            <div className="text-xs text-purple-300 mt-1">
-                              {exercise.frequency}
-                            </div>
-                          )}
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {exercise.targetMuscles.map((muscle, muscleIndex) => (
-                              <span 
-                                key={muscleIndex}
-                                className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
-                              >
-                                {muscle}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
+                ))}
+              </div>
+            ))}
+          </div>
         ) : (
-          <div className="mb-8">
-            <div className="bg-purple-800/20 rounded-lg p-4">
-              <h3 className="text-white font-medium mb-3">Progress Summary</h3>
-              <div className="text-purple-200">
-                <p className="mb-4">{getProgressSummary()}</p>
-                {assessmentHistory.length > 0 && (
-                  <div className="space-y-4">
+          <div className="space-y-4">
+            {assessmentHistory.length > 0 ? (
+              <>
+                <div className="bg-purple-800/20 rounded-lg p-4">
+                  <h3 className="text-white font-medium mb-3">Progress History</h3>
+                  <div className="space-y-3">
                     {assessmentHistory.map((history, index) => (
-                      <div 
-                        key={index}
-                        className="p-3 bg-purple-900/30 rounded-lg flex justify-between items-center"
-                      >
-                        <div>
-                          <div className="text-white">
-                            {new Date(history.date).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm text-purple-300">
-                            {history.analyses.length} poses analyzed
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-medium text-white">
-                            Age {Math.round(history.averageAge)}
-                          </div>
-                          {history.biologicalAge && (
-                            <div className="text-sm text-purple-300">
-                              Bio Age {history.biologicalAge}
-                            </div>
-                          )}
+                      <div key={index} className="bg-purple-900/30 rounded-lg p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-purple-200">{formatDate(history.date)}</span>
+                          <span className="text-white font-medium">Age {Math.round(history.averageAge)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-center text-purple-200">
+                Complete more assessments to see your progress over time.
+              </p>
+            )}
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="grid gap-4">
+        <div className="grid gap-4 mt-8">
           <button
             onClick={onRestart}
             className="w-full bg-gradient-to-r from-purple-600 to-purple-500 
                      text-white px-6 py-3 rounded-xl font-medium
                      hover:from-purple-500 hover:to-purple-400 
-                     transition-all duration-300 shadow-lg
-                     focus:ring-2 focus:ring-purple-400"
+                     transition-all duration-300 shadow-lg"
           >
             Start New Assessment
           </button>
