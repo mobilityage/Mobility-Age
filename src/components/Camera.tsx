@@ -1,6 +1,7 @@
+// src/components/Camera.tsx
+
 import { useRef, useState, useEffect } from 'react';
-import { Upload, Camera as CameraIcon, RefreshCw, X, Check, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Upload, Camera as CameraIcon, RefreshCw, RotateCcw, Check } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
@@ -186,21 +187,22 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
             />
             <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/70 via-transparent to-transparent">
               <div className="p-4 w-full flex justify-center space-x-4">
-                <Button
+                <button
                   onClick={handleRetakePhoto}
-                  variant="outline"
-                  className="bg-white/10 backdrop-blur-sm border-white/20"
+                  className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg
+                           hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  <RotateCcw className="w-5 h-5 mr-2" />
+                  <RotateCcw className="w-5 h-5 mr-2 inline-block" />
                   Retake
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={handleConfirmPhoto}
-                  className="bg-purple-600 hover:bg-purple-500"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg
+                           hover:bg-purple-500 transition-colors"
                 >
-                  <Check className="w-5 h-5 mr-2" />
+                  <Check className="w-5 h-5 mr-2 inline-block" />
                   Use Photo
-                </Button>
+                </button>
               </div>
             </div>
           </div>
