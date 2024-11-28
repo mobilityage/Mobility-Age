@@ -1,5 +1,3 @@
-// src/services/poseAnalysisService.ts
-
 import type { AnalysisResult, PoseAnalysis } from '../types/assessment';
 
 export class AnalysisError extends Error {
@@ -24,7 +22,7 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        photo: data.photo, // Send the complete photo data, including prefix
+        photo: data.photo,
         poseName: data.poseName,
         poseDescription: data.poseDescription,
         biologicalAge: data.biologicalAge
