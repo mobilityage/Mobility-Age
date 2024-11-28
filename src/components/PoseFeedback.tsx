@@ -8,13 +8,15 @@ interface PoseFeedbackProps {
   onContinue: () => void;
   onRetry: () => void;
   photo: string | null;
+  biologicalAge: number | null;
 }
 
 export function PoseFeedback({ 
   analysis, 
   onContinue, 
   onRetry,
-  photo
+  photo,
+  biologicalAge
 }: PoseFeedbackProps) {
   const [activeTab, setActiveTab] = useState<'feedback' | 'exercises'>('feedback');
 
@@ -31,10 +33,20 @@ export function PoseFeedback({
     }
   };
 
+  const getAgeComparison = () => {
+    if (!biologicalAge) return null;
+    const diff = analysis.mobilityAge - biologicalAge;
+    if (diff <= -5) return { text: "Exceptionally mobile for your age!", color: "text-green-400" };
+    if (diff <= 0) return { text: "Good mobility for your age", color: "text-green-200" };
+    if (diff <= 5) return { text: "Room for improvement", color: "text-yellow-200" };
+    return { text: "Needs attention", color: "text-red-200" };
+  };
+
+  const ageComparison = getAgeComparison();
+
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
       <div className="p-6">
-        {/* Photo Preview */}
         {photo && (
           <div className="mb-6 rounded-lg overflow-hidden border border-purple-300/20">
             <img 
@@ -45,8 +57,7 @@ export function PoseFeedback({
           </div>
         )}
 
-        {/* Header with Tabs */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
           <div className="flex space-x-4">
             <button
               onClick={() => setActiveTab('feedback')}
@@ -69,39 +80,44 @@ export function PoseFeedback({
               Exercises
             </button>
           </div>
-          <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
-            analysis.isGoodForm 
-              ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
-              : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
-          }`}>
-            Mobility Age: {analysis.mobilityAge}
-          </span>
+          <div className="flex flex-col items-end space-y-2 mt-4 sm:mt-0">
+            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+              analysis.isGoodForm 
+                ? 'bg-green-400/20 text-green-200 border border-green-400/30' 
+                : 'bg-yellow-400/20 text-yellow-200 border border-yellow-400/30'
+            }`}>
+              Mobility Age: {analysis.mobilityAge}
+            </span>
+            {ageComparison && (
+              <span className={`text-sm ${ageComparison.color}`}>
+                {ageComparison.text}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Analysis Tab Content */}
         {activeTab === 'feedback' && (
           <div className="space-y-6">
-            {/* Mobility Score */}
             <div>
               <div className="flex justify-between mb-2 text-sm font-medium text-purple-200">
                 <span>Mobility Assessment</span>
-                <span>Age {analysis.mobilityAge}</span>
+                {biologicalAge && (
+                  <span>Biological Age: {biologicalAge}</span>
+                )}
               </div>
               <div className="h-2.5 bg-purple-900/50 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-500 ${
-                    analysis.mobilityAge <= 30 ? 'bg-green-400' :
-                    analysis.mobilityAge <= 45 ? 'bg-yellow-400' : 'bg-red-400'
+                    analysis.mobilityAge <= (biologicalAge || 30) ? 'bg-green-400' :
+                    analysis.mobilityAge <= (biologicalAge || 30) + 10 ? 'bg-yellow-400' : 'bg-red-400'
                   }`}
                   style={{ width: `${Math.max(0, 100 - analysis.mobilityAge)}%` }}
                 />
               </div>
             </div>
 
-            {/* Feedback */}
             <p className="text-purple-100 text-lg">{analysis.feedback}</p>
 
-            {/* Recommendations */}
             {analysis.recommendations.length > 0 && (
               <div className="space-y-4">
                 <h4 className="font-semibold text-white">Recommended Improvements:</h4>
@@ -120,7 +136,6 @@ export function PoseFeedback({
           </div>
         )}
 
-        {/* Exercises Tab Content */}
         {activeTab === 'exercises' && (
           <div className="space-y-6">
             <div className="grid gap-4">
@@ -156,7 +171,6 @@ export function PoseFeedback({
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-3 mt-8">
           {!analysis.isGoodForm && (
             <button
