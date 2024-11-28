@@ -1,5 +1,3 @@
-// src/components/PoseFeedback.tsx
-
 import { useState } from 'react';
 import type { AnalysisResult } from '../types/assessment';
 
@@ -36,7 +34,7 @@ export function PoseFeedback({
   const getAgeComparison = () => {
     if (!biologicalAge) return null;
     const difference = analysis.mobilityAge - biologicalAge;
-    
+
     if (difference <= -5) {
       return { text: "Your mobility is better than your biological age", color: "text-green-200" };
     } else if (difference <= 0) {
@@ -161,7 +159,7 @@ export function PoseFeedback({
                     </span>
                   </div>
                   <p className="text-purple-100 mb-3">{exercise.description}</p>
-                  
+
                   {/* Exercise Steps */}
                   {exercise.steps && exercise.steps.length > 0 && (
                     <div className="mb-3">
@@ -217,7 +215,7 @@ export function PoseFeedback({
             <button
               onClick={onRetry}
               className="flex-1 px-4 py-2.5 border border-purple-300/20 text-purple-100 rounded-lg
-                       hover:bg-purple-800/30 active:bg-purple-700/30 transition-colors"
+              hover:bg-purple-800/30 active:bg-purple-700/30 transition-colors"
             >
               Try Again
             </button>
@@ -225,8 +223,8 @@ export function PoseFeedback({
           <button
             onClick={onContinue}
             className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg
-                     hover:bg-purple-500 active:bg-purple-700 transition-colors
-                     shadow-lg shadow-purple-900/50"
+            hover:bg-purple-500 active:bg-purple-700 transition-colors
+            shadow-lg shadow-purple-900/50"
           >
             {analysis.isGoodForm ? 'Continue' : 'Continue Anyway'}
           </button>
