@@ -211,7 +211,7 @@ Progress Tracking:
 [2-3 sentences about what improvements to look for over time]`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
