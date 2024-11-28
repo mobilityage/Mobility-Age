@@ -22,11 +22,10 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
         video: { 
           facingMode: facingMode,
           width: { ideal: 1280 },
-          height: { ideal: 720 },
-          aspectRatio: { ideal: 16 / 9 } // Ensure a wider aspect ratio
+          height: { ideal: 720 }
         } 
       });
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -52,7 +51,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
-    
+
     if (isCountingDown && countdown > 0) {
       intervalId = setInterval(() => {
         setCountdown(prev => prev - 1);
@@ -62,7 +61,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
       setIsCountingDown(false);
       setCountdown(5);
     }
-    
+
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
@@ -86,7 +85,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
-    
+
     const context = canvas.getContext('2d');
     if (context) {
       if (facingMode === 'user') {
@@ -230,7 +229,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
               }`}
               onLoadedMetadata={() => setIsStreaming(true)}
             />
-            
+
             {isStreaming && !isCountingDown && (
               <div className="absolute inset-0 flex flex-col items-center justify-end
               bg-gradient-to-t from-black/70 via-transparent to-transparent">
@@ -318,4 +317,10 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
             <span className="mr-2">•</span>
             Keep a clear background if possible
           </li>
-        
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default CameraComponent;
