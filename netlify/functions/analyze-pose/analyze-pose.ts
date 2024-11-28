@@ -53,10 +53,11 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
     const isGoodForm = content.toLowerCase().includes('form: good') || 
                       content.toLowerCase().includes('good form');
 
-    const feedbackMatch = content.match(/Feedback:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
+    // Look for both Assessment and Feedback sections
+    const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
     const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
 
-    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:$|Exercise))/i);
+    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Specific Exercises:|$))/i);
     const recommendations = recommendationsMatch 
       ? recommendationsMatch[1]
           .split('\n')
@@ -64,19 +65,45 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
           .filter(line => line.length > 0)
       : ['Practice proper form'];
 
-    const defaultExercise = {
-      name: 'Form Practice',
-      description: 'Practice the movement with proper form',
-      difficulty: 'beginner' as const,
-      targetMuscles: ['full body']
-    };
+    // Extract exercises from the content
+    const exerciseMatches = content.matchAll(/Exercise \d+:\s*([^]*?)(?=Exercise \d+:|$)/gs);
+    const exercises = Array.from(exerciseMatches).map(match => {
+      const exerciseContent = match[1];
+      const nameMatch = exerciseContent.match(/Name:\s*([^\n]+)/i);
+      const descMatch = exerciseContent.match(/Description:\s*([^\n]+)/i);
+      const difficultyMatch = exerciseContent.match(/Difficulty:\s*(beginner|intermediate|advanced)/i);
+      const setsMatch = exerciseContent.match(/Sets:\s*(\d+)/i);
+      const repsMatch = exerciseContent.match(/Reps:\s*(\d+)/i);
+      const musclesMatch = exerciseContent.match(/Target Muscles:\s*([^\n]+)/i);
+
+      return {
+        name: nameMatch ? nameMatch[1].trim() : 'Form Practice',
+        description: descMatch ? descMatch[1].trim() : 'Practice the movement with proper form',
+        difficulty: (difficultyMatch ? difficultyMatch[1].toLowerCase() : 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+        sets: setsMatch ? parseInt(setsMatch[1]) : undefined,
+        reps: repsMatch ? parseInt(repsMatch[1]) : undefined,
+        targetMuscles: musclesMatch 
+          ? musclesMatch[1].split(',').map(m => m.trim())
+          : ['full body']
+      };
+    });
+
+    // If no exercises were found, provide a default
+    if (exercises.length === 0) {
+      exercises.push({
+        name: 'Form Practice',
+        description: 'Practice the movement with proper form',
+        difficulty: 'beginner',
+        targetMuscles: ['full body']
+      });
+    }
 
     return {
       mobilityAge,
       feedback,
       recommendations,
       isGoodForm,
-      exercises: [defaultExercise],
+      exercises,
       poseName
     };
   } catch (error) {
@@ -137,15 +164,30 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are a physiotherapist analyzing a mobility pose. Respond EXACTLY in this format:
+    const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Provide a detailed clinical assessment in EXACTLY this format:
 
-Age: [number between 20-80]
+Age: [mobility age between 20-80 based on form quality]
 Form: [good/needs improvement]
-Feedback: [2-3 sentences about their form]
+
+Assessment: [3-4 detailed sentences analyzing their form, joint angles, muscle engagement, and overall mobility]
+
 Recommendations:
-- [improvement 1]
-- [improvement 2]
-- [improvement 3]`;
+- [specific improvement 1 with clear guidance]
+- [specific improvement 2 with clear guidance]
+- [specific improvement 3 with clear guidance]
+
+Specific Exercises:
+
+Exercise 1:
+Name: [specific exercise name]
+Description: [detailed description of exercise purpose and execution]
+Difficulty: [beginner/intermediate/advanced]
+Sets: [number]
+Reps: [number]
+Target Muscles: [primary and secondary muscles targeted]
+
+Exercise 2:
+[same format as Exercise 1]`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
