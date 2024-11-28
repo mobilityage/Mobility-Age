@@ -27,18 +27,24 @@ export interface AnalysisResult {
   isGoodForm: boolean;
   exercises: Exercise[];
   poseName: string;
+  comparativeAge?: {
+    difference: number;
+    assessment: string;
+  };
 }
 
 export interface PoseAnalysis {
   photo: string;
   poseName: string;
   poseDescription: string;
+  biologicalAge?: number;
 }
 
 export interface AssessmentHistory {
   date: string;
   averageAge: number;
   analyses: AnalysisResult[];
+  biologicalAge?: number;
 }
 
 export const MOBILITY_POSES: PoseInstruction[] = [
