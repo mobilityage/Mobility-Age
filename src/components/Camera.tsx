@@ -1,7 +1,6 @@
 // src/components/Camera.tsx
 
 import { useRef, useState, useEffect } from 'react';
-import { Upload, Camera as CameraIcon, RefreshCw, RotateCcw, Check } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
@@ -192,7 +191,6 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
                   className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg
                            hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  <RotateCcw className="w-5 h-5 mr-2 inline-block" />
                   Retake
                 </button>
                 <button
@@ -200,7 +198,6 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg
                            hover:bg-purple-500 transition-colors"
                 >
-                  <Check className="w-5 h-5 mr-2 inline-block" />
                   Use Photo
                 </button>
               </div>
@@ -220,8 +217,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
               className="flex flex-col items-center space-y-4 p-8 text-purple-200 
                        hover:text-white transition-colors"
             >
-              <Upload className="w-12 h-12" />
-              <span className="text-lg">Click to upload a photo</span>
+              <span>Click to upload a photo</span>
             </button>
           </div>
         ) : (
@@ -248,7 +244,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
                                shadow-lg border border-white/20"
                       title="Switch Camera"
                     >
-                      <RefreshCw className="w-6 h-6" />
+                      Switch
                     </button>
                     <button
                       onClick={handleStartCountdown}
@@ -300,15 +296,9 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
                    text-purple-200 rounded-lg hover:bg-purple-800/30 transition-colors"
         >
           {uploadMode ? (
-            <>
-              <CameraIcon className="w-5 h-5" />
-              <span>Switch to Camera</span>
-            </>
+            <span>Switch to Camera</span>
           ) : (
-            <>
-              <Upload className="w-5 h-5" />
-              <span>Switch to Upload</span>
-            </>
+            <span>Switch to Upload</span>
           )}
         </button>
       </div>
