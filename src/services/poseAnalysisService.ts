@@ -27,7 +27,7 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
         photo: data.photo,
         poseName: data.poseName,
         poseDescription: data.poseDescription,
-        biologicalAge: data.biologicalAge  // Pass this through to the serverless function
+        biologicalAge: data.biologicalAge
       })
     });
 
