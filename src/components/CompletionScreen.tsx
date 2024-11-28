@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface CompletionScreenProps {
   averageAge: number;
@@ -21,12 +20,16 @@ export function CompletionScreen({
 }: CompletionScreenProps) {
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
 
-  const getProgressData = () => {
-    return assessmentHistory.map(history => ({
-      date: new Date(history.date).toLocaleDateString(),
-      age: history.averageAge,
-      biological: history.biologicalAge
-    }));
+  const getProgressSummary = () => {
+    if (assessmentHistory.length <= 1) {
+      return "Complete more assessments to track your progress over time.";
+    }
+
+    const firstAssessment = assessmentHistory[0];
+    const improvement = firstAssessment.averageAge - averageAge;
+    const timeElapsed = Math.round((new Date().getTime() - new Date(firstAssessment.date).getTime()) / (1000 * 60 * 60 * 24));
+
+    return `You've improved by ${improvement.toFixed(1)} years over ${timeElapsed} days.`;
   };
 
   return (
@@ -138,18 +141,16 @@ export function CompletionScreen({
                               {exercise.frequency}
                             </div>
                           )}
-                          {exercise.targetMuscles && exercise.targetMuscles.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {exercise.targetMuscles.map((muscle, muscleIndex) => (
-                                <span 
-                                  key={muscleIndex}
-                                  className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
-                                >
-                                  {muscle}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {exercise.targetMuscles.map((muscle, muscleIndex) => (
+                              <span 
+                                key={muscleIndex}
+                                className="text-xs bg-purple-800/50 px-2 py-0.5 rounded-full text-purple-200"
+                              >
+                                {muscle}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -160,84 +161,41 @@ export function CompletionScreen({
           </>
         ) : (
           <div className="mb-8">
-            {assessmentHistory.length > 0 ? (
-              <>
-                <div className="bg-purple-800/20 rounded-lg p-4 mb-6">
-                  <h3 className="text-white font-medium mb-4">Mobility Progress</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={getProgressData()} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#E9D5FF" 
-                          fontSize={12}
-                          tickMargin={8}
-                        />
-                        <YAxis 
-                          stroke="#E9D5FF" 
-                          fontSize={12}
-                          tickMargin={8}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(88, 28, 135, 0.8)',
-                            border: '1px solid rgba(147, 51, 234, 0.3)',
-                            borderRadius: '8px',
-                            backdropFilter: 'blur(8px)',
-                          }}
-                          labelStyle={{ color: '#E9D5FF' }}
-                          itemStyle={{ color: '#E9D5FF' }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="age" 
-                          stroke="#9333EA" 
-                          strokeWidth={2}
-                          name="Mobility Age"
-                          dot={{ fill: '#9333EA', strokeWidth: 2 }}
-                        />
-                        {biologicalAge && (
-                          <Line 
-                            type="monotone" 
-                            dataKey="biological" 
-                            stroke="#60A5FA" 
-                            strokeWidth={2}
-                            name="Biological Age"
-                            strokeDasharray="4 4"
-                            dot={{ fill: '#60A5FA', strokeWidth: 2 }}
-                          />
-                        )}
-                      </LineChart>
-                    </ResponsiveContainer>
+            <div className="bg-purple-800/20 rounded-lg p-4">
+              <h3 className="text-white font-medium mb-3">Progress Summary</h3>
+              <div className="text-purple-200">
+                <p className="mb-4">{getProgressSummary()}</p>
+                {assessmentHistory.length > 0 && (
+                  <div className="space-y-4">
+                    {assessmentHistory.map((history, index) => (
+                      <div 
+                        key={index}
+                        className="p-3 bg-purple-900/30 rounded-lg flex justify-between items-center"
+                      >
+                        <div>
+                          <div className="text-white">
+                            {new Date(history.date).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-purple-300">
+                            {history.analyses.length} poses analyzed
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-medium text-white">
+                            Age {Math.round(history.averageAge)}
+                          </div>
+                          {history.biologicalAge && (
+                            <div className="text-sm text-purple-300">
+                              Bio Age {history.biologicalAge}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                <div className="bg-purple-800/20 rounded-lg p-4">
-                  <h3 className="text-white font-medium mb-3">Progress Summary</h3>
-                  <div className="space-y-2 text-purple-200">
-                    <p>
-                      Initial Assessment: {new Date(assessmentHistory[0].date).toLocaleDateString()}
-                      <br />
-                      Initial Mobility Age: {Math.round(assessmentHistory[0].averageAge)}
-                    </p>
-                    <p>
-                      Latest Assessment: {new Date().toLocaleDateString()}
-                      <br />
-                      Current Mobility Age: {Math.round(averageAge)}
-                    </p>
-                    {assessmentHistory.length > 1 && (
-                      <p className="font-medium">
-                        Total Improvement: {Math.round(assessmentHistory[0].averageAge - averageAge)} years
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="text-center text-purple-200 py-8">
-                Complete more assessments to track your progress over time.
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 
