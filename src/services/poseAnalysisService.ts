@@ -23,7 +23,12 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        photo: data.photo, // Send the complete photo data, including prefix
+        poseName: data.poseName,
+        poseDescription: data.poseDescription,
+        biologicalAge: data.biologicalAge
+      })
     });
 
     console.log('Response status:', response.status);
@@ -64,7 +69,7 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
     typeof result.isGoodForm === 'boolean' &&
-    (!result.exercises || Array.isArray(result.exercises))
+    Array.isArray(result.exercises)
   );
 }
 
