@@ -17,8 +17,8 @@ export interface Exercise {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   sets?: number;
   reps?: number;
-  steps?: string[];
-  frequency?: string;
+  steps: string[];
+  frequency: string;
   targetMuscles: string[];
   progressionMetrics?: string;
 }
