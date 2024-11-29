@@ -48,11 +48,11 @@ export function PoseFeedback({
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
       <div className="p-6">
         {photo && (
-          <div className="mb-6 rounded-lg overflow-hidden border border-purple-300/20">
+          <div className="mb-6 max-h-[50vh] rounded-lg overflow-hidden border border-purple-300/20">
             <img 
               src={photo} 
               alt="Pose analysis" 
-              className="w-full object-cover max-h-64"
+              className="w-full h-auto object-contain"
             />
           </div>
         )}
