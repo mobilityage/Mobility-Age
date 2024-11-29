@@ -30,11 +30,6 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
   console.log('Starting to parse content:', content);
 
   try {
-    // Check for retry request first
-    if (content.trim().toUpperCase().startsWith('RETRY:')) {
-      throw new AnalysisError(content.substring(6).trim());
-    }
-
     const ageMatch = content.match(/Age:\s*(\d+)/i);
     if (!ageMatch) {
       console.log('Failed to find age in:', content);
@@ -142,12 +137,12 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. When assessing mobility age, be strict - good form should match biological age of ${biologicalAge}, poor form should indicate an older mobility age. If the image quality is poor or pose is not clearly visible, respond with RETRY: followed by specific instructions for better image capture. Otherwise, provide detailed analysis in this format:
+    const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Be strict with the assessment considering the person's biological age of ${biologicalAge}. If you cannot clearly see the pose, respond with RETRY: followed by specific guidance. Otherwise provide your analysis in this format:
 
 Age: [mobility age]
 Form: [good/needs improvement]
 
-Assessment: [3-4 sentences analyzing their form quality]
+Assessment: [3-4 sentences analyzing form]
 
 Recommendations:
 - [specific improvement 1]
@@ -200,6 +195,19 @@ Exercise 2:
 
     console.log('Raw API response:', content);
 
+    // Check for retry request
+    if (content.trim().toUpperCase().startsWith('RETRY:')) {
+      return {
+        statusCode: 422,
+        headers,
+        body: JSON.stringify({
+          needsRetry: true,
+          message: content.substring(6).trim(),
+          detailedMessage: content.substring(6).trim()
+        })
+      };
+    }
+
     const result = parseContent(content, poseName);
 
     return {
@@ -211,17 +219,24 @@ Exercise 2:
   } catch (error) {
     console.error('Function error:', error);
     
-    if (error instanceof AnalysisError && error.message.toLowerCase().includes('retry')) {
+    // If the error message suggests the image needs to be retaken
+    if (error instanceof Error && (
+      error.message.toLowerCase().includes('clearer image') ||
+      error.message.toLowerCase().includes('try again') ||
+      error.message.toLowerCase().includes('unable to analyze')
+    )) {
       return {
         statusCode: 422,
         headers,
         body: JSON.stringify({
-          error: 'Image quality issue',
-          retryMessage: error.message
+          needsRetry: true,
+          message: "Please ensure your full body is visible and the image is clear. Try adjusting your position or lighting.",
+          detailedMessage: error.message
         })
       };
     }
 
+    // For actual errors
     return {
       statusCode: 500,
       headers,
