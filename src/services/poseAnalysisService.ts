@@ -3,9 +3,12 @@
 import type { AnalysisResult, PoseAnalysis } from '../types/assessment';
 
 export class AnalysisError extends Error {
-  constructor(message: string) {
+  retryMessage?: string;
+  
+  constructor(message: string, retryMessage?: string) {
     super(message);
     this.name = 'AnalysisError';
+    this.retryMessage = retryMessage;
   }
 }
 
@@ -27,6 +30,11 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     });
 
     console.log('Response status:', response.status);
+
+    if (response.status === 422) {
+      const errorData = await response.json();
+      throw new AnalysisError('Image quality issue', errorData.retryMessage);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -64,7 +72,16 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
     typeof result.isGoodForm === 'boolean' &&
-    Array.isArray(result.exercises)
+    Array.isArray(result.exercises) &&
+    result.exercises.every((exercise: any) => (
+      typeof exercise === 'object' &&
+      typeof exercise.name === 'string' &&
+      typeof exercise.description === 'string' &&
+      ['beginner', 'intermediate', 'advanced'].includes(exercise.difficulty) &&
+      Array.isArray(exercise.targetMuscles) &&
+      (!exercise.sets || typeof exercise.sets === 'number') &&
+      (!exercise.reps || typeof exercise.reps === 'number')
+    ))
   );
 }
 
