@@ -6,21 +6,23 @@ import Camera from '../components/Camera';
 import { PoseInstructions } from '../components/PoseInstructions';
 import { PoseFeedback } from '../components/PoseFeedback';
 import { CompletionScreen } from '../components/CompletionScreen';
+import AssessmentInstructions from '../components/AssessmentInstructions';
 import { analyzePose } from '../services/poseAnalysisService';
 
-type AssessmentState = 'age-input' | 'instructions' | 'camera' | 'analysis' | 'complete';
+type AssessmentState = 'welcome' | 'age-input' | 'instructions' | 'camera' | 'analysis' | 'complete';
 
 export default function AssessmentPage() {
   const [currentPose, setCurrentPose] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
-  const [assessmentState, setAssessmentState] = useState<AssessmentState>('age-input');
+  const [assessmentState, setAssessmentState] = useState<AssessmentState>('welcome');
   const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [biologicalAge, setBiologicalAge] = useState<number | null>(null);
   const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistory[]>([]);
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
 
   const currentPoseData = MOBILITY_POSES[currentPose];
 
@@ -56,7 +58,7 @@ export default function AssessmentPage() {
 
   const getAverageAge = () => {
     if (analyses.length === 0) return 0;
-    return Math.round(analyses.reduce((sum, a) => sum + a.mobilityAge, 0) / analyses.length);
+    return analyses.reduce((sum, a) => sum + a.mobilityAge, 0) / analyses.length;
   };
 
   const handlePhotoTaken = async (photoData: string) => {
@@ -65,6 +67,7 @@ export default function AssessmentPage() {
     setCurrentPhoto(photoData);
     setIsLoading(true);
     setError(null);
+    setRetryMessage(null);
     
     try {
       const analysis = await analyzePose({
@@ -80,15 +83,25 @@ export default function AssessmentPage() {
       setAssessmentState('analysis');
     } catch (error: any) {
       console.error('Error analyzing pose:', error);
-      setError(error.message || 'Failed to analyze pose');
-      setAssessmentState('instructions');
+      if (error.retryMessage) {
+        setRetryMessage(error.retryMessage);
+        setAssessmentState('camera');
+      } else {
+        setError(error.message || 'Failed to analyze pose');
+        setAssessmentState('instructions');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleStartAssessment = () => {
+    setAssessmentState('age-input');
+  };
+
   const handleContinue = () => {
     setCurrentPhoto(null);
+    setRetryMessage(null);
     if (currentPose < MOBILITY_POSES.length - 1) {
       setCurrentPose(currentPose + 1);
       setAssessmentState('instructions');
@@ -103,17 +116,28 @@ export default function AssessmentPage() {
     setCurrentPose(0);
     setPhotos([]);
     setAnalyses([]);
-    setAssessmentState('age-input');
+    setAssessmentState('welcome');
     setCurrentAnalysis(null);
     setCurrentPhoto(null);
     setBiologicalAge(null);
+    setRetryMessage(null);
   };
+
+  if (assessmentState === 'welcome') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
+        <div className="max-w-2xl mx-auto mt-20">
+          <AssessmentInstructions onStart={handleStartAssessment} />
+        </div>
+      </div>
+    );
+  }
 
   if (assessmentState === 'age-input') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
         <div className="max-w-md mx-auto mt-20 bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-purple-300/20">
-          <h2 className="text-2xl font-bold text-white mb-4">Welcome to Your Mobility Assessment</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Enter Your Age</h2>
           <p className="text-purple-200 mb-6">
             To provide more accurate results, please enter your biological age:
           </p>
@@ -200,19 +224,21 @@ export default function AssessmentPage() {
                   <PoseInstructions 
                     poseData={currentPoseData}
                     onStartPose={() => setAssessmentState('camera')}
+                    referenceImage={currentPoseData.referenceImage}
                   />
                 )}
                 {assessmentState === 'camera' && (
                   <Camera 
                     onPhotoTaken={handlePhotoTaken}
                     currentPhoto={currentPhoto}
+                    retryMessage={retryMessage}
                   />
                 )}
                 {assessmentState === 'analysis' && currentAnalysis && (
                   <PoseFeedback
                     analysis={currentAnalysis}
                     onContinue={handleContinue}
-                    onRetry={() => setAssessmentState('instructions')}
+                    onRetry={() => setAssessmentState('camera')}
                     photo={currentPhoto}
                     biologicalAge={biologicalAge}
                   />
