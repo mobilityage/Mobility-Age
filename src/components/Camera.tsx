@@ -24,15 +24,13 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: facingMode
         } 
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
         setIsStreaming(true);
       }
     } catch (err) {
@@ -125,13 +123,8 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
     }
   };
 
-  const handleConfirmPhoto = () => {
-    if (previewPhoto) {
-      onPhotoTaken(previewPhoto);
-    }
-  };
-
-  const handleRetakePhoto = () => {
+  const handleRetry = () => {
+    setError(null);
     setPreviewPhoto(null);
     if (!uploadMode) {
       startCamera();
@@ -151,13 +144,19 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
   if (error || retryMessage) {
     return (
       <div className="text-center p-6 bg-purple-900/30 rounded-xl backdrop-blur-sm border border-purple-300/20">
-        <p className="text-purple-100 mb-4">{retryMessage || error}</p>
+        <p className="text-purple-100 mb-6">{retryMessage || error}</p>
+        {currentPhoto && (
+          <div className="mb-6 max-w-md mx-auto">
+            <img 
+              src={currentPhoto} 
+              alt="Previous attempt" 
+              className="w-full h-auto rounded-lg border border-purple-300/20"
+            />
+          </div>
+        )}
         <div className="flex justify-center space-x-4">
           <button
-            onClick={() => {
-              setError(null);
-              if (!uploadMode) startCamera();
-            }}
+            onClick={handleRetry}
             className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 
                      transition-all duration-300 shadow-lg shadow-purple-900/50
                      flex items-center space-x-2"
@@ -189,29 +188,29 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto px-4">
+    <div className="w-full max-w-2xl mx-auto px-4">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-semibold text-white mb-2">
           {uploadMode ? 'Upload Your Pose' : 'Capture Your Pose'}
         </h2>
         <p className="text-purple-200 text-sm">
-          Ensure your full body is visible in portrait orientation
+          Ensure your full body is visible
         </p>
       </div>
 
-      <div className="relative rounded-2xl overflow-hidden bg-purple-900/20 backdrop-blur-sm
-                    border border-purple-300/20 shadow-xl">
+      <div className="relative bg-purple-900/20 backdrop-blur-sm
+                    border border-purple-300/20 shadow-xl rounded-2xl overflow-hidden">
         {previewPhoto ? (
-          <div className="relative aspect-[3/4] w-full">
+          <div className="relative max-h-[70vh] overflow-hidden">
             <img 
               src={previewPhoto} 
               alt="Preview" 
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain"
             />
-            <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/70 via-transparent to-transparent">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent">
               <div className="p-4 w-full flex justify-center space-x-4">
                 <button
-                  onClick={handleRetakePhoto}
+                  onClick={handleRetry}
                   className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg
                            hover:bg-white/20 transition-colors border border-white/20
                            flex items-center space-x-2"
@@ -220,7 +219,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
                   <span>Retake</span>
                 </button>
                 <button
-                  onClick={handleConfirmPhoto}
+                  onClick={() => onPhotoTaken(previewPhoto)}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg
                            hover:bg-purple-500 transition-colors
                            flex items-center space-x-2"
@@ -232,7 +231,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
             </div>
           </div>
         ) : uploadMode ? (
-          <div className="aspect-[3/4] w-full flex items-center justify-center">
+          <div className="aspect-auto p-8 flex flex-col items-center justify-center">
             <input
               type="file"
               ref={fileInputRef}
@@ -250,20 +249,19 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
             </button>
           </div>
         ) : (
-          <div className="relative aspect-[3/4] w-full">
+          <div className="relative">
             <video
               ref={videoRef}
               autoPlay
               playsInline
-              className={`absolute inset-0 w-full h-full object-cover ${
+              className={`w-full h-auto object-contain max-h-[70vh] ${
                 facingMode === 'user' ? 'scale-x-[-1]' : ''
               }`}
               onLoadedMetadata={() => setIsStreaming(true)}
             />
-
             {isStreaming && !isCountingDown && (
               <div className="absolute inset-0 flex flex-col items-center justify-end
-                           bg-gradient-to-t from-black/70 via-transparent to-transparent">
+                           bg-gradient-to-t from-black/70 to-transparent">
                 <div className="w-full p-4 space-y-4">
                   <div className="flex justify-center items-center space-x-4">
                     <button
@@ -318,7 +316,6 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraPro
         )}
       </div>
 
-      {/* Mode Toggle Button */}
       <div className="mt-4 text-center">
         <button
           onClick={toggleMode}
