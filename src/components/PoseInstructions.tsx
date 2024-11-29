@@ -1,4 +1,5 @@
-import React from 'react';
+// src/components/PoseInstructions.tsx
+
 import type { PoseInstruction } from '../types/assessment';
 import { Info } from 'lucide-react';
 
