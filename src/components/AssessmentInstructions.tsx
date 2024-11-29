@@ -1,5 +1,8 @@
 // src/components/AssessmentInstructions.tsx
 
+import { useState } from 'react';
+import { Info } from 'lucide-react';
+
 interface AssessmentInstructionsProps {
   onStart: () => void;
 }
