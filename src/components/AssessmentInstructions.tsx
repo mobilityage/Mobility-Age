@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { Info } from 'lucide-react';
+// src/components/AssessmentInstructions.tsx
 
 interface AssessmentInstructionsProps {
   onStart: () => void;
-  onShowDetails?: () => void;
 }
 
-export default function AssessmentInstructions({ onStart, onShowDetails }: AssessmentInstructionsProps) {
+export default function AssessmentInstructions({ onStart }: AssessmentInstructionsProps) {
   const [showGuide, setShowGuide] = useState(false);
 
   return (
