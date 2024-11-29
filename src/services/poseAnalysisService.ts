@@ -1,18 +1,15 @@
 // src/services/poseAnalysisService.ts
 
-import type { AnalysisResult, PoseAnalysis } from '../types/assessment';
+import type { AnalysisResult, PoseAnalysis, RetryMessage } from '../types/assessment';
 
 export class AnalysisError extends Error {
-  retryMessage?: string;
-  
-  constructor(message: string, retryMessage?: string) {
+  constructor(message: string) {
     super(message);
     this.name = 'AnalysisError';
-    this.retryMessage = retryMessage;
   }
 }
 
-export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
+export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult | RetryMessage> {
   try {
     console.log('Starting pose analysis for:', data.poseName);
 
@@ -31,9 +28,10 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
 
     console.log('Response status:', response.status);
 
-    if (response.status === 422) {
-      const errorData = await response.json();
-      throw new AnalysisError('Image quality issue', errorData.retryMessage);
+    const result = await response.json();
+
+    if (response.status === 422 && 'needsRetry' in result) {
+      return result as RetryMessage;
     }
 
     if (!response.ok) {
@@ -42,7 +40,6 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
       throw new AnalysisError(`Server error: ${errorText}`);
     }
 
-    const result = await response.json();
     console.log('Received analysis result');
 
     if (!isValidAnalysisResult(result)) {
@@ -57,10 +54,7 @@ export async function analyzePose(data: PoseAnalysis): Promise<AnalysisResult> {
     };
   } catch (error) {
     console.error('Analysis error:', error);
-    if (error instanceof AnalysisError) {
-      throw error;
-    }
-    throw new AnalysisError('Failed to analyze pose. Please try again.');
+    throw error instanceof Error ? error : new AnalysisError('Failed to analyze pose. Please try again.');
   }
 }
 
@@ -72,17 +66,6 @@ function isValidAnalysisResult(result: any): result is AnalysisResult {
     typeof result.feedback === 'string' &&
     Array.isArray(result.recommendations) &&
     typeof result.isGoodForm === 'boolean' &&
-    Array.isArray(result.exercises) &&
-    result.exercises.every((exercise: any) => (
-      typeof exercise === 'object' &&
-      typeof exercise.name === 'string' &&
-      typeof exercise.description === 'string' &&
-      ['beginner', 'intermediate', 'advanced'].includes(exercise.difficulty) &&
-      Array.isArray(exercise.targetMuscles) &&
-      (!exercise.sets || typeof exercise.sets === 'number') &&
-      (!exercise.reps || typeof exercise.reps === 'number')
-    ))
+    Array.isArray(result.exercises)
   );
 }
-
-export type { AnalysisResult, PoseAnalysis };
