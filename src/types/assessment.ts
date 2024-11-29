@@ -33,6 +33,12 @@ export interface AnalysisResult {
   };
 }
 
+export interface RetryMessage {
+  needsRetry: true;
+  message: string;
+  detailedMessage: string;
+}
+
 export interface PoseAnalysis {
   photo: string;
   poseName: string;
