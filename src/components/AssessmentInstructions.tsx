@@ -71,8 +71,8 @@ export default function AssessmentInstructions({ onStart }: AssessmentInstructio
               <div>
                 <p className="mb-1">Choose your capture method:</p>
                 <ul className="space-y-1 ml-7 list-disc">
-                  <li>Use the timer function (recommended)</li>
-                  <li>Ask someone to take the photo</li>
+                  <li>Ask someone to take the photo (recommended)</li>
+                  <li>Use the timer function</li>
                   <li>Record a video and screenshot the correct pose</li>
                 </ul>
               </div>
