@@ -1,11 +1,15 @@
+// src/components/Camera.tsx
+
 import { useRef, useState, useEffect } from 'react';
+import { Camera, RefreshCw, Upload, Timer } from 'lucide-react';
 
 interface CameraProps {
   onPhotoTaken: (photoData: string) => void;
   currentPhoto: string | null;
+  retryMessage?: string | null;
 }
 
-const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
+const CameraComponent = ({ onPhotoTaken, currentPhoto, retryMessage }: CameraProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -144,20 +148,42 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
     }
   };
 
-  if (error) {
+  if (error || retryMessage) {
     return (
       <div className="text-center p-6 bg-purple-900/30 rounded-xl backdrop-blur-sm border border-purple-300/20">
-        <p className="text-purple-100 mb-4">{error}</p>
-        <button
-          onClick={() => {
-            setError(null);
-            if (!uploadMode) startCamera();
-          }}
-          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 
-          transition-all duration-300 shadow-lg shadow-purple-900/50"
-        >
-          Try Again
-        </button>
+        <p className="text-purple-100 mb-4">{retryMessage || error}</p>
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={() => {
+              setError(null);
+              if (!uploadMode) startCamera();
+            }}
+            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 
+                     transition-all duration-300 shadow-lg shadow-purple-900/50
+                     flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Try Again</span>
+          </button>
+          <button
+            onClick={toggleMode}
+            className="px-6 py-2 bg-purple-900/30 text-purple-100 rounded-lg
+                     hover:bg-purple-800/30 transition-all duration-300
+                     border border-purple-300/20 flex items-center space-x-2"
+          >
+            {uploadMode ? (
+              <>
+                <Camera className="w-4 h-4" />
+                <span>Switch to Camera</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                <span>Switch to Upload</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     );
   }
@@ -169,14 +195,14 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
           {uploadMode ? 'Upload Your Pose' : 'Capture Your Pose'}
         </h2>
         <p className="text-purple-200 text-sm">
-          Ensure your full body is visible
+          Ensure your full body is visible in portrait orientation
         </p>
       </div>
 
       <div className="relative rounded-2xl overflow-hidden bg-purple-900/20 backdrop-blur-sm
-      border border-purple-300/20 shadow-xl">
+                    border border-purple-300/20 shadow-xl">
         {previewPhoto ? (
-          <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
+          <div className="relative aspect-[3/4] w-full">
             <img 
               src={previewPhoto} 
               alt="Preview" 
@@ -187,22 +213,26 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
                 <button
                   onClick={handleRetakePhoto}
                   className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg
-                  hover:bg-white/20 transition-colors border border-white/20"
+                           hover:bg-white/20 transition-colors border border-white/20
+                           flex items-center space-x-2"
                 >
-                  Retake
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Retake</span>
                 </button>
                 <button
                   onClick={handleConfirmPhoto}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg
-                  hover:bg-purple-500 transition-colors"
+                           hover:bg-purple-500 transition-colors
+                           flex items-center space-x-2"
                 >
-                  Use Photo
+                  <Camera className="w-4 h-4" />
+                  <span>Use Photo</span>
                 </button>
               </div>
             </div>
           </div>
         ) : uploadMode ? (
-          <div className="aspect-[3/4] md:aspect-[4/3] w-full flex items-center justify-center">
+          <div className="aspect-[3/4] w-full flex items-center justify-center">
             <input
               type="file"
               ref={fileInputRef}
@@ -213,13 +243,14 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex flex-col items-center space-y-4 p-8 text-purple-200 
-              hover:text-white transition-colors"
+                       hover:text-white transition-colors"
             >
+              <Upload className="w-8 h-8" />
               <span>Click to upload a photo</span>
             </button>
           </div>
         ) : (
-          <div className="relative aspect-[3/4] md:aspect-[4/3] w-full">
+          <div className="relative aspect-[3/4] w-full">
             <video
               ref={videoRef}
               autoPlay
@@ -232,26 +263,27 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
 
             {isStreaming && !isCountingDown && (
               <div className="absolute inset-0 flex flex-col items-center justify-end
-              bg-gradient-to-t from-black/70 via-transparent to-transparent">
+                           bg-gradient-to-t from-black/70 via-transparent to-transparent">
                 <div className="w-full p-4 space-y-4">
                   <div className="flex justify-center items-center space-x-4">
                     <button
                       onClick={handleToggleCamera}
                       className="p-4 bg-white/10 backdrop-blur-sm text-white rounded-full
-                      hover:bg-white/20 transition-all duration-300 
-                      shadow-lg border border-white/20"
+                               hover:bg-white/20 transition-all duration-300 
+                               shadow-lg border border-white/20"
                       title="Switch Camera"
                     >
-                      Switch
+                      <RefreshCw className="w-5 h-5" />
                     </button>
                     <button
                       onClick={handleStartCountdown}
                       className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-full
-                      hover:bg-white/20 transition-all duration-300
-                      shadow-lg border border-white/20
-                      font-medium text-lg"
+                               hover:bg-white/20 transition-all duration-300
+                               shadow-lg border border-white/20
+                               font-medium text-lg flex items-center space-x-2"
                     >
-                      Take Photo
+                      <Timer className="w-5 h-5" />
+                      <span>Take Photo</span>
                     </button>
                   </div>
                 </div>
@@ -260,7 +292,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
 
             {isCountingDown && (
               <div className="absolute inset-0 flex items-center justify-center 
-              bg-black/40 backdrop-blur-sm">
+                           bg-black/40 backdrop-blur-sm">
                 <div className="relative">
                   <div className="absolute inset-0 animate-ping opacity-50">
                     <div className="w-24 h-24 rounded-full bg-white/20"></div>
@@ -274,10 +306,10 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
 
             {!isStreaming && (
               <div className="absolute inset-0 flex items-center justify-center 
-              bg-purple-900/80 backdrop-blur-sm">
+                           bg-purple-900/80 backdrop-blur-sm">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="w-12 h-12 border-4 border-purple-200 border-t-transparent
-                  rounded-full animate-spin"></div>
+                               rounded-full animate-spin"></div>
                   <p className="text-purple-200 text-lg">Starting camera...</p>
                 </div>
               </div>
@@ -291,23 +323,33 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
         <button
           onClick={toggleMode}
           className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-900/30 
-          text-purple-200 rounded-lg hover:bg-purple-800/30 transition-colors"
+                   text-purple-200 rounded-lg hover:bg-purple-800/30 transition-colors"
         >
           {uploadMode ? (
-            <span>Switch to Camera</span>
+            <>
+              <Camera className="w-4 h-4" />
+              <span>Switch to Camera</span>
+            </>
           ) : (
-            <span>Switch to Upload</span>
+            <>
+              <Upload className="w-4 h-4" />
+              <span>Switch to Upload</span>
+            </>
           )}
         </button>
       </div>
 
       <div className="mt-6 p-4 bg-purple-900/20 backdrop-blur-sm rounded-xl
-      border border-purple-300/20">
+                    border border-purple-300/20">
         <h3 className="text-white font-medium mb-2">Tips for Best Results:</h3>
         <ul className="text-purple-200 text-sm space-y-2">
           <li className="flex items-center">
             <span className="mr-2">•</span>
-            Ensure your entire body is visible in the frame
+            Use portrait orientation for your photo
+          </li>
+          <li className="flex items-center">
+            <span className="mr-2">•</span>
+            Ensure your entire body is visible
           </li>
           <li className="flex items-center">
             <span className="mr-2">•</span>
@@ -315,7 +357,7 @@ const CameraComponent = ({ onPhotoTaken, currentPhoto }: CameraProps) => {
           </li>
           <li className="flex items-center">
             <span className="mr-2">•</span>
-            Keep a clear background if possible
+            Use a clear background
           </li>
         </ul>
       </div>
