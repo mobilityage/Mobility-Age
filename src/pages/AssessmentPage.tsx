@@ -70,26 +70,26 @@ export default function AssessmentPage() {
     setRetryMessage(null);
     
     try {
-      const analysis = await analyzePose({
+      const response = await analyzePose({
         photo: photoData,
         poseName: currentPoseData.name,
         poseDescription: currentPoseData.description,
         biologicalAge
       });
       
-      setPhotos([...photos, photoData]);
-      setAnalyses([...analyses, analysis]);
-      setCurrentAnalysis(analysis);
-      setAssessmentState('analysis');
-    } catch (error: any) {
-      console.error('Error analyzing pose:', error);
-      if (error.retryMessage) {
-        setRetryMessage(error.retryMessage);
+      if ('needsRetry' in response) {
+        setRetryMessage(response.message);
         setAssessmentState('camera');
       } else {
-        setError(error.message || 'Failed to analyze pose');
-        setAssessmentState('instructions');
+        setPhotos([...photos, photoData]);
+        setAnalyses([...analyses, response]);
+        setCurrentAnalysis(response);
+        setAssessmentState('analysis');
       }
+    } catch (error: any) {
+      console.error('Error analyzing pose:', error);
+      setError(error.message || 'Failed to analyze pose');
+      setAssessmentState('instructions');
     } finally {
       setIsLoading(false);
     }
@@ -123,6 +123,7 @@ export default function AssessmentPage() {
     setRetryMessage(null);
   };
 
+  // Welcome Screen
   if (assessmentState === 'welcome') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
@@ -133,6 +134,7 @@ export default function AssessmentPage() {
     );
   }
 
+  // Age Input Screen
   if (assessmentState === 'age-input') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
@@ -171,6 +173,7 @@ export default function AssessmentPage() {
     );
   }
 
+  // Main Assessment Flow
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
