@@ -1,15 +1,24 @@
 interface PoseImageProps {
   src: string;
   name: string;
+  width?: number;
+  height?: number;
 }
 
-export function PoseImage({ src, name }: PoseImageProps) {
+export function PoseImage({ 
+  src, 
+  name, 
+  width = 400, 
+  height = 300 
+}: PoseImageProps) {
   return (
-    <div className="relative aspect-video rounded-xl overflow-hidden
-                    border border-purple-300/20 shadow-lg">
+    <div className="relative rounded-xl overflow-hidden border border-purple-300/20 shadow-lg">
       <img 
         src={src} 
         alt={`Reference pose for ${name}`}
+        width={width}
+        height={height}
+        loading="lazy"
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 via-transparent to-transparent">
