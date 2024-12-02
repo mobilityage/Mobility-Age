@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
-import { Calendar, Bell, Share2 } from 'lucide-react';
+import { Bell, Share2 } from 'lucide-react';
 
 interface CompletionScreenProps {
   averageAge: number;
@@ -34,15 +34,15 @@ export function CompletionScreen({
       setNotificationsEnabled(permission === 'granted');
       
       if (permission === 'granted') {
-        // Schedule reminders for each exercise
         analyses.forEach(analysis => {
           analysis.exercises.forEach(exercise => {
-            const delay = Math.random() * 3 + 1; // Random delay between 1-4 days
-            const notification = new Notification('Exercise Reminder', {
-              body: `Time to practice your ${exercise.name}! Keep improving your mobility.`,
-              icon: '/icons/reminder.png'
-            });
-            setTimeout(() => notification.close(), 5000);
+            const delay = Math.random() * 3 + 1; 
+            setTimeout(() => {
+              new Notification('Exercise Reminder', {
+                body: `Time to practice your ${exercise.name}! Keep improving your mobility.`,
+                icon: '/icons/reminder.png'
+              });
+            }, delay * 24 * 60 * 60 * 1000);
           });
         });
       }
@@ -69,7 +69,7 @@ export function CompletionScreen({
   };
 
   const scheduleReminders = () => {
-    const reminderInterval = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const reminderInterval = 7 * 24 * 60 * 60 * 1000;
     localStorage.setItem('lastAssessmentDate', new Date().toISOString());
     
     if ('Notification' in window && Notification.permission === 'granted') {
