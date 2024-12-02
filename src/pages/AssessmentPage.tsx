@@ -24,43 +24,8 @@ export default function AssessmentPage() {
   const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistory[]>([]);
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
-  const [history, setHistory] = useState<AssessmentState[]>([]);
 
   const currentPoseData = MOBILITY_POSES[currentPose];
-
-  const handleBack = () => {
-    if (history.length === 0) return;
-    
-    const previousState = history[history.length - 1];
-    setHistory(history.slice(0, -1));
-    
-    switch (assessmentState) {
-      case 'camera':
-        setAssessmentState('instructions');
-        break;
-      case 'analysis':
-        setAssessmentState('camera');
-        setCurrentAnalysis(null);
-        break;
-      case 'age-input':
-        setAssessmentState('welcome');
-        setBiologicalAge(null);
-        break;
-      case 'instructions':
-        if (currentPose > 0) {
-          setCurrentPose(currentPose - 1);
-          setAssessmentState('analysis');
-        } else {
-          setAssessmentState('age-input');
-        }
-        break;
-    }
-  };
-
-  const setAssessmentStateWithHistory = (newState: AssessmentState) => {
-    setHistory([...history, assessmentState]);
-    setAssessmentState(newState);
-  };
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('assessmentHistory');
@@ -115,24 +80,50 @@ export default function AssessmentPage() {
       
       if ('needsRetry' in response) {
         setRetryMessage(response.message);
-        setAssessmentStateWithHistory('camera');
+        setAssessmentState('camera');
       } else {
         setPhotos([...photos, photoData]);
         setAnalyses([...analyses, response]);
         setCurrentAnalysis(response);
-        setAssessmentStateWithHistory('analysis');
+        setAssessmentState('analysis');
       }
     } catch (error: any) {
       console.error('Error analyzing pose:', error);
       setError(error.message || 'Failed to analyze pose');
-      setAssessmentStateWithHistory('instructions');
+      setAssessmentState('instructions');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleStartAssessment = () => {
-    setAssessmentStateWithHistory('age-input');
+    setAssessmentState('age-input');
+  };
+
+  const handleBack = () => {
+    switch (assessmentState) {
+      case 'camera':
+        setAssessmentState('instructions');
+        break;
+      case 'analysis':
+        setAssessmentState('camera');
+        setCurrentAnalysis(null);
+        break;
+      case 'age-input':
+        setAssessmentState('welcome');
+        setBiologicalAge(null);
+        break;
+      case 'instructions':
+        if (currentPose > 0) {
+          setCurrentPose(currentPose - 1);
+          setAssessmentState('analysis');
+        } else {
+          setAssessmentState('age-input');
+        }
+        break;
+      default:
+        return;
+    }
   };
 
   const handleContinue = () => {
@@ -140,11 +131,11 @@ export default function AssessmentPage() {
     setRetryMessage(null);
     if (currentPose < MOBILITY_POSES.length - 1) {
       setCurrentPose(currentPose + 1);
-      setAssessmentStateWithHistory('instructions');
+      setAssessmentState('instructions');
       setCurrentAnalysis(null);
     } else {
       saveAssessmentHistory(analyses);
-      setAssessmentStateWithHistory('complete');
+      setAssessmentState('complete');
     }
   };
 
@@ -152,12 +143,11 @@ export default function AssessmentPage() {
     setCurrentPose(0);
     setPhotos([]);
     setAnalyses([]);
-    setAssessmentStateWithHistory('welcome');
+    setAssessmentState('welcome');
     setCurrentAnalysis(null);
     setCurrentPhoto(null);
     setBiologicalAge(null);
     setRetryMessage(null);
-    setHistory([]);
   };
 
   if (assessmentState === 'welcome') {
@@ -191,7 +181,7 @@ export default function AssessmentPage() {
           <form onSubmit={(e) => {
             e.preventDefault();
             if (biologicalAge && biologicalAge >= 18 && biologicalAge <= 100) {
-              setAssessmentStateWithHistory('instructions');
+              setAssessmentState('instructions');
             }
           }}>
             <input
@@ -280,7 +270,7 @@ export default function AssessmentPage() {
                 {assessmentState === 'instructions' && (
                   <PoseInstructions 
                     poseData={currentPoseData}
-                    onStartPose={() => setAssessmentStateWithHistory('camera')}
+                    onStartPose={() => setAssessmentState('camera')}
                     referenceImage={currentPoseData.referenceImage}
                   />
                 )}
@@ -295,7 +285,7 @@ export default function AssessmentPage() {
                   <PoseFeedback
                     analysis={currentAnalysis}
                     onContinue={handleContinue}
-                    onRetry={() => setAssessmentStateWithHistory('camera')}
+                    onRetry={() => setAssessmentState('camera')}
                     photo={currentPhoto}
                     biologicalAge={biologicalAge}
                   />
