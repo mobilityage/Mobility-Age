@@ -208,7 +208,10 @@ export default function AssessmentPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 relative">
-      {assessmentState !== 'welcome' && assessmentState !== 'age-input' && (
+      {(assessmentState === 'instructions' || 
+        assessmentState === 'camera' || 
+        assessmentState === 'analysis' || 
+        assessmentState === 'complete') && (
         <button
           onClick={handleBack}
           className="absolute top-4 left-4 p-2 text-purple-200 hover:text-white
