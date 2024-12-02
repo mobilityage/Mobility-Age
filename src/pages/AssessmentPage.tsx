@@ -1,6 +1,7 @@
 // src/pages/AssessmentPage.tsx
 
 import { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { MOBILITY_POSES, type AnalysisResult, type AssessmentHistory } from '../types/assessment';
 import Camera from '../components/Camera';
 import { PoseInstructions } from '../components/PoseInstructions';
@@ -23,8 +24,43 @@ export default function AssessmentPage() {
   const [assessmentHistory, setAssessmentHistory] = useState<AssessmentHistory[]>([]);
   const [currentPhoto, setCurrentPhoto] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [history, setHistory] = useState<AssessmentState[]>([]);
 
   const currentPoseData = MOBILITY_POSES[currentPose];
+
+  const handleBack = () => {
+    if (history.length === 0) return;
+    
+    const previousState = history[history.length - 1];
+    setHistory(history.slice(0, -1));
+    
+    switch (assessmentState) {
+      case 'camera':
+        setAssessmentState('instructions');
+        break;
+      case 'analysis':
+        setAssessmentState('camera');
+        setCurrentAnalysis(null);
+        break;
+      case 'age-input':
+        setAssessmentState('welcome');
+        setBiologicalAge(null);
+        break;
+      case 'instructions':
+        if (currentPose > 0) {
+          setCurrentPose(currentPose - 1);
+          setAssessmentState('analysis');
+        } else {
+          setAssessmentState('age-input');
+        }
+        break;
+    }
+  };
+
+  const setAssessmentStateWithHistory = (newState: AssessmentState) => {
+    setHistory([...history, assessmentState]);
+    setAssessmentState(newState);
+  };
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('assessmentHistory');
@@ -79,24 +115,24 @@ export default function AssessmentPage() {
       
       if ('needsRetry' in response) {
         setRetryMessage(response.message);
-        setAssessmentState('camera');
+        setAssessmentStateWithHistory('camera');
       } else {
         setPhotos([...photos, photoData]);
         setAnalyses([...analyses, response]);
         setCurrentAnalysis(response);
-        setAssessmentState('analysis');
+        setAssessmentStateWithHistory('analysis');
       }
     } catch (error: any) {
       console.error('Error analyzing pose:', error);
       setError(error.message || 'Failed to analyze pose');
-      setAssessmentState('instructions');
+      setAssessmentStateWithHistory('instructions');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleStartAssessment = () => {
-    setAssessmentState('age-input');
+    setAssessmentStateWithHistory('age-input');
   };
 
   const handleContinue = () => {
@@ -104,11 +140,11 @@ export default function AssessmentPage() {
     setRetryMessage(null);
     if (currentPose < MOBILITY_POSES.length - 1) {
       setCurrentPose(currentPose + 1);
-      setAssessmentState('instructions');
+      setAssessmentStateWithHistory('instructions');
       setCurrentAnalysis(null);
     } else {
       saveAssessmentHistory(analyses);
-      setAssessmentState('complete');
+      setAssessmentStateWithHistory('complete');
     }
   };
 
@@ -116,14 +152,14 @@ export default function AssessmentPage() {
     setCurrentPose(0);
     setPhotos([]);
     setAnalyses([]);
-    setAssessmentState('welcome');
+    setAssessmentStateWithHistory('welcome');
     setCurrentAnalysis(null);
     setCurrentPhoto(null);
     setBiologicalAge(null);
     setRetryMessage(null);
+    setHistory([]);
   };
 
-  // Welcome Screen
   if (assessmentState === 'welcome') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
@@ -134,10 +170,19 @@ export default function AssessmentPage() {
     );
   }
 
-  // Age Input Screen
   if (assessmentState === 'age-input') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 p-4">
+        {assessmentState !== 'welcome' && (
+          <button
+            onClick={handleBack}
+            className="absolute top-4 left-4 p-2 text-purple-200 hover:text-white
+                      transition-colors duration-300 rounded-lg
+                      hover:bg-purple-800/30"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+        )}
         <div className="max-w-md mx-auto mt-20 bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-purple-300/20">
           <h2 className="text-2xl font-bold text-white mb-4">Enter Your Age</h2>
           <p className="text-purple-200 mb-6">
@@ -146,7 +191,7 @@ export default function AssessmentPage() {
           <form onSubmit={(e) => {
             e.preventDefault();
             if (biologicalAge && biologicalAge >= 18 && biologicalAge <= 100) {
-              setAssessmentState('instructions');
+              setAssessmentStateWithHistory('instructions');
             }
           }}>
             <input
@@ -173,9 +218,18 @@ export default function AssessmentPage() {
     );
   }
 
-  // Main Assessment Flow
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700 relative">
+      {assessmentState !== 'welcome' && (
+        <button
+          onClick={handleBack}
+          className="absolute top-4 left-4 p-2 text-purple-200 hover:text-white
+                    transition-colors duration-300 rounded-lg
+                    hover:bg-purple-800/30"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+      )}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute w-full h-full bg-[radial-gradient(circle_at_50%_120%,rgba(142,67,231,0.1),transparent)]" />
       </div>
@@ -226,7 +280,7 @@ export default function AssessmentPage() {
                 {assessmentState === 'instructions' && (
                   <PoseInstructions 
                     poseData={currentPoseData}
-                    onStartPose={() => setAssessmentState('camera')}
+                    onStartPose={() => setAssessmentStateWithHistory('camera')}
                     referenceImage={currentPoseData.referenceImage}
                   />
                 )}
@@ -241,7 +295,7 @@ export default function AssessmentPage() {
                   <PoseFeedback
                     analysis={currentAnalysis}
                     onContinue={handleContinue}
-                    onRetry={() => setAssessmentState('camera')}
+                    onRetry={() => setAssessmentStateWithHistory('camera')}
                     photo={currentPhoto}
                     biologicalAge={biologicalAge}
                   />
