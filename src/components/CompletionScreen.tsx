@@ -1,7 +1,8 @@
 // src/components/CompletionScreen.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
+import { Calendar, Bell, Share2 } from 'lucide-react';
 
 interface CompletionScreenProps {
   averageAge: number;
@@ -19,6 +20,67 @@ export function CompletionScreen({
   biologicalAge
 }: CompletionScreenProps) {
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
+
+  const requestNotifications = async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === 'granted');
+      
+      if (permission === 'granted') {
+        // Schedule reminders for each exercise
+        analyses.forEach(analysis => {
+          analysis.exercises.forEach(exercise => {
+            const delay = Math.random() * 3 + 1; // Random delay between 1-4 days
+            const notification = new Notification('Exercise Reminder', {
+              body: `Time to practice your ${exercise.name}! Keep improving your mobility.`,
+              icon: '/icons/reminder.png'
+            });
+            setTimeout(() => notification.close(), 5000);
+          });
+        });
+      }
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: 'My Mobility Assessment Results',
+      text: `My mobility age is ${Math.round(averageAge)} years! Check out this mobility assessment tool.`,
+      url: window.location.origin
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareData.text);
+        alert('Results copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  const scheduleReminders = () => {
+    const reminderInterval = 7 * 24 * 60 * 60 * 1000; // 7 days
+    localStorage.setItem('lastAssessmentDate', new Date().toISOString());
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setTimeout(() => {
+        new Notification('Mobility Assessment Reminder', {
+          body: 'Time for another mobility assessment! Track your progress.',
+          icon: '/icons/reminder.png'
+        });
+      }, reminderInterval);
+    }
+  };
 
   const getAgeDifference = () => {
     if (!biologicalAge) return null;
@@ -44,6 +106,10 @@ export function CompletionScreen({
 
   const ageDifference = getAgeDifference();
   const progress = calculateProgress();
+
+  useEffect(() => {
+    scheduleReminders();
+  }, []);
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
@@ -186,6 +252,29 @@ export function CompletionScreen({
         )}
 
         <div className="grid gap-4 mt-8">
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => requestNotifications()}
+              disabled={notificationsEnabled}
+              className={`flex items-center justify-center px-4 py-3 rounded-xl
+                       border border-purple-300/20 gap-2
+                       ${notificationsEnabled 
+                         ? 'bg-purple-900/30 text-purple-400 cursor-not-allowed' 
+                         : 'bg-purple-800/30 text-purple-200 hover:bg-purple-700/30'}`}
+            >
+              <Bell className="w-5 h-5" />
+              <span>{notificationsEnabled ? 'Reminders Set' : 'Enable Reminders'}</span>
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex items-center justify-center px-4 py-3 rounded-xl
+                       bg-purple-800/30 text-purple-200 hover:bg-purple-700/30
+                       border border-purple-300/20 gap-2"
+            >
+              <Share2 className="w-5 h-5" />
+              <span>Share Results</span>
+            </button>
+          </div>
           <button
             onClick={onRestart}
             className="w-full bg-purple-600 text-white px-6 py-3 rounded-xl
