@@ -1,48 +1,7 @@
 // netlify/functions/analyze-pose.ts
+
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
-
-interface ClinicalRanges {
-  deepSquat: {
-    hipFlexion: { min: 95, max: 100 },
-    kneeFlexion: { min: 130, max: 140 },
-    ankleDorsiflexion: { min: 35, max: 38 }
-  },
-  forwardFold: {
-    hipFlexion: { min: 90 },
-    hamstringFlexibility: { min: 80 }
-  },
-  apleyScratch: {
-    internalRotation: { min: 70 },
-    externalRotation: { min: 90 },
-    fingerGap: { max: 20 }
-  },
-  kneeWall: {
-    weightBearing: { min: 35, max: 38 },
-    distance: { min: 10, max: 12 }
-  }
-}
-
-const CLINICAL_RANGES: ClinicalRanges = {
-  deepSquat: {
-    hipFlexion: { min: 95, max: 100 },
-    kneeFlexion: { min: 130, max: 140 },
-    ankleDorsiflexion: { min: 35, max: 38 }
-  },
-  forwardFold: {
-    hipFlexion: { min: 90 },
-    hamstringFlexibility: { min: 80 }
-  },
-  apleyScratch: {
-    internalRotation: { min: 70 },
-    externalRotation: { min: 90 },
-    fingerGap: { max: 20 }
-  },
-  kneeWall: {
-    weightBearing: { min: 35, max: 38 },
-    distance: { min: 10, max: 12 }
-  }
-};
 
 interface AnalysisResult {
   mobilityAge: number;
@@ -70,6 +29,27 @@ interface AnalysisResult {
     };
   };
 }
+
+const CLINICAL_RANGES = {
+  deepSquat: {
+    hipFlexion: { min: 95, max: 100 },
+    kneeFlexion: { min: 130, max: 140 },
+    ankleDorsiflexion: { min: 35, max: 38 }
+  },
+  forwardFold: {
+    hipFlexion: { min: 90 },
+    hamstringFlexibility: { min: 80 }
+  },
+  apleyScratch: {
+    internalRotation: { min: 70 },
+    externalRotation: { min: 90 },
+    fingerGap: { max: 20 }
+  },
+  kneeWall: {
+    weightBearing: { min: 35, max: 38 },
+    distance: { min: 10, max: 12 }
+  }
+};
 
 function calculateMobilityAge(
   biologicalAge: number,
@@ -151,13 +131,11 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
       const angles: { [key: string]: number } = {};
       const distances: { [key: string]: number } = {};
 
-      // Parse angles
       const angleMatches = measurementText.matchAll(/(\w+)\s+angle:\s*(\d+(?:\.\d+)?)/gi);
       for (const match of angleMatches) {
         angles[match[1].toLowerCase()] = parseFloat(match[2]);
       }
 
-      // Parse distances
       const distanceMatches = measurementText.matchAll(/(\w+)\s+distance:\s*(\d+(?:\.\d+)?)/gi);
       for (const match of distanceMatches) {
         distances[match[1].toLowerCase()] = parseFloat(match[2]);
@@ -168,7 +146,6 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     }
 
     const isGoodForm = content.toLowerCase().includes('form: good');
-
     const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
     const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
