@@ -1,6 +1,18 @@
 // App.tsx
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import AssessmentPage from './pages/AssessmentPage';
+import PasscodePage from './pages/PasscodePage';
+
+const AUTH_KEY = "mobilityAssessmentAuth";
+
+// Protected Route wrapper component
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = localStorage.getItem(AUTH_KEY) === "true";
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
 
 function LandingPage() {
   const navigate = useNavigate();
@@ -62,8 +74,23 @@ function App() {
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-700">
         <main className="container mx-auto px-4 py-8">
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/assessment" element={<AssessmentPage />} />
+            <Route path="/" element={<PasscodePage />} />
+            <Route 
+              path="/welcome" 
+              element={
+                <ProtectedRoute>
+                  <LandingPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/assessment" 
+              element={
+                <ProtectedRoute>
+                  <AssessmentPage />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </main>
       </div>
