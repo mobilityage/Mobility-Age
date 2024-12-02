@@ -1,7 +1,48 @@
 // netlify/functions/analyze-pose.ts
-
 import { Handler } from '@netlify/functions';
 import { OpenAI } from "openai";
+
+interface ClinicalRanges {
+  deepSquat: {
+    hipFlexion: { min: 95, max: 100 },
+    kneeFlexion: { min: 130, max: 140 },
+    ankleDorsiflexion: { min: 35, max: 38 }
+  },
+  forwardFold: {
+    hipFlexion: { min: 90 },
+    hamstringFlexibility: { min: 80 }
+  },
+  apleyScratch: {
+    internalRotation: { min: 70 },
+    externalRotation: { min: 90 },
+    fingerGap: { max: 20 }
+  },
+  kneeWall: {
+    weightBearing: { min: 35, max: 38 },
+    distance: { min: 10, max: 12 }
+  }
+}
+
+const CLINICAL_RANGES: ClinicalRanges = {
+  deepSquat: {
+    hipFlexion: { min: 95, max: 100 },
+    kneeFlexion: { min: 130, max: 140 },
+    ankleDorsiflexion: { min: 35, max: 38 }
+  },
+  forwardFold: {
+    hipFlexion: { min: 90 },
+    hamstringFlexibility: { min: 80 }
+  },
+  apleyScratch: {
+    internalRotation: { min: 70 },
+    externalRotation: { min: 90 },
+    fingerGap: { max: 20 }
+  },
+  kneeWall: {
+    weightBearing: { min: 35, max: 38 },
+    distance: { min: 10, max: 12 }
+  }
+};
 
 interface AnalysisResult {
   mobilityAge: number;
@@ -17,6 +58,80 @@ interface AnalysisResult {
     targetMuscles: string[];
   }[];
   poseName: string;
+  measurements?: {
+    angles?: {
+      hip?: number;
+      knee?: number;
+      ankle?: number;
+    };
+    distances?: {
+      fingerGap?: number;
+      wallDistance?: number;
+    };
+  };
+}
+
+function calculateMobilityAge(
+  biologicalAge: number,
+  measurements: AnalysisResult['measurements'],
+  poseName: string,
+  isGoodForm: boolean
+): number {
+  let ageAdjustment = 0;
+  const maxAdjustment = 20;
+
+  switch (poseName) {
+    case 'Deep Squat':
+      if (measurements?.angles) {
+        const { hip, knee, ankle } = measurements.angles;
+        if (hip && hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
+          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.hipFlexion.min - hip) * 0.5);
+        }
+        if (knee && knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
+          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.kneeFlexion.min - knee) * 0.5);
+        }
+        if (ankle && ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
+          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min - ankle) * 0.75);
+        }
+      }
+      break;
+
+    case 'Forward Fold':
+      if (measurements?.angles?.hip) {
+        const hipFlexion = measurements.angles.hip;
+        if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
+          ageAdjustment += Math.min(20, (CLINICAL_RANGES.forwardFold.hipFlexion.min - hipFlexion) * 0.6);
+        }
+      }
+      break;
+
+    case 'Apley Scratch Test':
+      if (measurements?.distances?.fingerGap) {
+        const gap = measurements.distances.fingerGap;
+        if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
+          ageAdjustment += Math.min(20, (gap - CLINICAL_RANGES.apleyScratch.fingerGap.max) * 1.5);
+        }
+      }
+      break;
+
+    case 'Knee to Wall Test':
+      if (measurements?.angles?.ankle) {
+        const ankleAngle = measurements.angles.ankle;
+        if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
+          ageAdjustment += Math.min(15, (CLINICAL_RANGES.kneeWall.weightBearing.min - ankleAngle) * 0.8);
+        }
+      }
+      break;
+  }
+
+  if (!isGoodForm) {
+    ageAdjustment += 5;
+  }
+
+  ageAdjustment = Math.min(maxAdjustment, ageAdjustment);
+  const adjustedAge = biologicalAge + ageAdjustment;
+
+  return Math.max(18, Math.min(100, Math.round(adjustedAge)));
 }
 
 class AnalysisError extends Error {
@@ -26,20 +141,35 @@ class AnalysisError extends Error {
   }
 }
 
-const parseContent = (content: string, poseName: string): AnalysisResult => {
-  console.log('Starting to parse content:', content);
-
+const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
-    const ageMatch = content.match(/Age:\s*(\d+)/i);
-    if (!ageMatch) {
-      console.log('Failed to find age in:', content);
-      throw new AnalysisError('Unable to analyze the pose properly. Please try again with a clearer image.');
+    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|$))/i);
+    const measurements: AnalysisResult['measurements'] = {};
+    
+    if (measurementsMatch) {
+      const measurementText = measurementsMatch[1];
+      const angles: { [key: string]: number } = {};
+      const distances: { [key: string]: number } = {};
+
+      // Parse angles
+      const angleMatches = measurementText.matchAll(/(\w+)\s+angle:\s*(\d+(?:\.\d+)?)/gi);
+      for (const match of angleMatches) {
+        angles[match[1].toLowerCase()] = parseFloat(match[2]);
+      }
+
+      // Parse distances
+      const distanceMatches = measurementText.matchAll(/(\w+)\s+distance:\s*(\d+(?:\.\d+)?)/gi);
+      for (const match of distanceMatches) {
+        distances[match[1].toLowerCase()] = parseFloat(match[2]);
+      }
+
+      if (Object.keys(angles).length > 0) measurements.angles = angles;
+      if (Object.keys(distances).length > 0) measurements.distances = distances;
     }
 
-    const mobilityAge = parseInt(ageMatch[1]);
+    const isGoodForm = content.toLowerCase().includes('form: good');
 
-    const isGoodForm = content.toLowerCase().includes('form: good') || 
-                      content.toLowerCase().includes('good form');
+    const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
     const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
     const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
@@ -89,7 +219,8 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
       recommendations,
       isGoodForm,
       exercises,
-      poseName
+      poseName,
+      measurements
     };
   } catch (error) {
     console.error('Parse error:', error);
@@ -97,6 +228,33 @@ const parseContent = (content: string, poseName: string): AnalysisResult => {
     throw error;
   }
 };
+
+const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Include precise measurements in your assessment. Your response should follow this format:
+
+Measurements:
+[List relevant angles and distances measured from the image]
+
+Form: [good/needs improvement]
+
+Assessment: [3-4 sentences analyzing form]
+
+Recommendations:
+- [specific improvement 1]
+- [specific improvement 2]
+- [specific improvement 3]
+
+Specific Exercises:
+
+Exercise 1:
+Name: [exercise name]
+Description: [description]
+Difficulty: [beginner/intermediate/advanced]
+Sets: [number]
+Reps: [number]
+Target Muscles: [muscles]
+
+Exercise 2:
+[same format as Exercise 1]`;
 
 const handler: Handler = async (event) => {
   const headers = {
@@ -137,33 +295,8 @@ const handler: Handler = async (event) => {
 
     console.log('Starting analysis for:', poseName);
 
-    const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Be strict with the assessment considering the person's biological age of ${biologicalAge}. If you cannot clearly see the pose, respond with RETRY: followed by specific guidance. Otherwise provide your analysis in this format:
-
-Age: [mobility age]
-Form: [good/needs improvement]
-
-Assessment: [3-4 sentences analyzing form]
-
-Recommendations:
-- [specific improvement 1]
-- [specific improvement 2]
-- [specific improvement 3]
-
-Specific Exercises:
-
-Exercise 1:
-Name: [exercise name]
-Description: [description]
-Difficulty: [beginner/intermediate/advanced]
-Sets: [number]
-Reps: [number]
-Target Muscles: [muscles]
-
-Exercise 2:
-[same format as Exercise 1]`;
-
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
@@ -174,7 +307,7 @@ Exercise 2:
           content: [
             {
               type: "text",
-              text: `Analyze this ${poseName} pose.`
+              text: `Analyze this ${poseName} pose. Include accurate measurements of joint angles and relevant distances.`
             },
             {
               type: "image_url",
@@ -195,7 +328,6 @@ Exercise 2:
 
     console.log('Raw API response:', content);
 
-    // Check for retry request
     if (content.trim().toUpperCase().startsWith('RETRY:')) {
       return {
         statusCode: 422,
@@ -208,7 +340,7 @@ Exercise 2:
       };
     }
 
-    const result = parseContent(content, poseName);
+    const result = parseContent(content, poseName, biologicalAge);
 
     return {
       statusCode: 200,
@@ -219,7 +351,6 @@ Exercise 2:
   } catch (error) {
     console.error('Function error:', error);
     
-    // If the error message suggests the image needs to be retaken
     if (error instanceof Error && (
       error.message.toLowerCase().includes('clearer image') ||
       error.message.toLowerCase().includes('try again') ||
@@ -236,7 +367,6 @@ Exercise 2:
       };
     }
 
-    // For actual errors
     return {
       statusCode: 500,
       headers,
