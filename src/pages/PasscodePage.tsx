@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Use environment variable for passcode
-const PASSCODE = import.meta.env.VITE_ACCESS_CODE || "123456";
+// Fixed environment variable access
+const PASSCODE = (import.meta.env.VITE_ACCESS_CODE as string) ?? "123456";
 const AUTH_KEY = "mobilityAssessmentAuth";
 
 export default function PasscodePage() {
