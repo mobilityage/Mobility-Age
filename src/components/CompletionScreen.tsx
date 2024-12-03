@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
 import { Bell, Share2 } from 'lucide-react';
 
+declare const supabase: any;
+
 interface CompletionScreenProps {
   averageAge: number;
   analyses: AnalysisResult[];
@@ -22,10 +24,32 @@ export function CompletionScreen({
   const [selectedTab, setSelectedTab] = useState<'summary' | 'history'>('summary');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
+  const saveAssessmentData = async () => {
+    try {
+      const { error } = await supabase
+        .from('assessments')
+        .insert([{
+          biological_age: biologicalAge,
+          mobility_age: averageAge,
+          poses: analyses,
+          feedback: analyses.map(a => ({
+            poseName: a.poseName,
+            recommendations: a.recommendations
+          }))
+        }]);
+      
+      if (error) throw error;
+      console.log('Assessment saved successfully');
+    } catch (error) {
+      console.error('Error saving assessment:', error);
+    }
+  };
+
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationsEnabled(Notification.permission === 'granted');
     }
+    saveAssessmentData();
   }, []);
 
   const requestNotifications = async () => {
@@ -36,7 +60,7 @@ export function CompletionScreen({
       if (permission === 'granted') {
         analyses.forEach(analysis => {
           analysis.exercises.forEach(exercise => {
-            const delay = Math.random() * 3 + 1; 
+            const delay = Math.random() * 3 + 1;
             setTimeout(() => {
               new Notification('Exercise Reminder', {
                 body: `Time to practice your ${exercise.name}! Keep improving your mobility.`,
@@ -68,20 +92,6 @@ export function CompletionScreen({
     }
   };
 
-  const scheduleReminders = () => {
-    const reminderInterval = 7 * 24 * 60 * 60 * 1000;
-    localStorage.setItem('lastAssessmentDate', new Date().toISOString());
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      setTimeout(() => {
-        new Notification('Mobility Assessment Reminder', {
-          body: 'Time for another mobility assessment! Track your progress.',
-          icon: '/icons/reminder.png'
-        });
-      }, reminderInterval);
-    }
-  };
-
   const getAgeDifference = () => {
     if (!biologicalAge) return null;
     const diff = averageAge - biologicalAge;
@@ -106,10 +116,6 @@ export function CompletionScreen({
 
   const ageDifference = getAgeDifference();
   const progress = calculateProgress();
-
-  useEffect(() => {
-    scheduleReminders();
-  }, []);
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-lg overflow-hidden border border-purple-300/20">
