@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import type { AnalysisResult, AssessmentHistory } from '../types/assessment';
 import { Bell, Share2 } from 'lucide-react';
 
-declare const supabase: any;
+declare global {
+  interface Window {
+    supabaseClient: any;
+  }
+}
 
 interface CompletionScreenProps {
   averageAge: number;
@@ -26,7 +30,18 @@ export function CompletionScreen({
 
   const saveAssessmentData = async () => {
     try {
-      const { error } = await supabase
+      const supabase = window.supabaseClient;
+      if (!supabase) {
+        throw new Error('Supabase client not initialized');
+      }
+
+      console.log('Saving assessment data:', {
+        biological_age: biologicalAge,
+        mobility_age: averageAge,
+        poses: analyses
+      });
+
+      const { data, error } = await supabase
         .from('assessments')
         .insert([{
           biological_age: biologicalAge,
@@ -37,9 +52,9 @@ export function CompletionScreen({
             recommendations: a.recommendations
           }))
         }]);
-      
+
       if (error) throw error;
-      console.log('Assessment saved successfully');
+      console.log('Assessment saved successfully:', data);
     } catch (error) {
       console.error('Error saving assessment:', error);
     }
