@@ -30,8 +30,7 @@ export function CompletionScreen({
 
   const saveAssessmentData = async () => {
     try {
-      const supabase = window.supabaseClient;
-      if (!supabase) {
+      if (!window.supabase) {
         throw new Error('Supabase client not initialized');
       }
 
@@ -41,7 +40,7 @@ export function CompletionScreen({
         poses: analyses
       });
 
-      const { data, error } = await supabase
+      const { data, error } = await window.supabase
         .from('assessments')
         .insert([{
           biological_age: biologicalAge,
