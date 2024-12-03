@@ -6,7 +6,7 @@ import { Bell, Share2 } from 'lucide-react';
 
 declare global {
   interface Window {
-    supabaseClient: any;
+    supabase: any;
   }
 }
 
