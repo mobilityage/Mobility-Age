@@ -170,53 +170,45 @@ class AnalysisError extends Error {
   }
 }
 
-const systemPrompt = `You are an expert physiotherapist assessing mobility. Provide detailed analysis based on what you observe:
-
-Key measurements (when clearly visible):
-- Joint angles (hips, knees, shoulders, ankles) in degrees
-- Relevant distances (floor reach, finger gaps, wall) in cm
-- Range of motion limitations
-- Compensation patterns
-- Movement quality
-- Body alignment
-
-Assessment should:
-- Focus on observed capabilities
-- Compare to clinical standards
-- Note movement patterns and compensations
-- Consider age-appropriate norms
-- Identify specific limitations
-
-Format:
+const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image using EXACTLY this format with NO markdown symbols or formatting:
 
 Measurements:
-[Observed angles and distances]
+- Angle measurements in degrees (e.g., "Hip angle: 90")
+- Distance measurements in cm (e.g., "Finger gap: 5")
+List only specific numerical measurements that you can see. Do not use words like "typically" or "approximately".
 
-Form: [good/poor with rationale]
+Form: good/poor
+[One sentence explanation]
 
 Assessment:
-[Detailed analysis of observed movement]
+[2-3 sentences about observed movement quality and limitations]
 
 Recommendations:
-[Specific improvements based on findings]
-
-Specific Exercises:
+- [Point 1]
+- [Point 2]
+- [Point 3]
 
 Exercise 1:
-Name: [name]
-Description: [clear instruction]
-Difficulty: [beginner/intermediate/advanced]
+Name: [exercise name]
+Description: [1 sentence]
+Difficulty: beginner/intermediate/advanced
 Sets: [number]
 Reps: [number]
-Target Muscles: [specific muscles]
+Target Muscles: [muscle groups]
 
-Exercise 2: [same format]
+Exercise 2:
+[Same format as Exercise 1]
 
-Provide most accurate assessment possible based on visible evidence.`;
+IMPORTANT:
+- DO NOT use markdown formatting (###, **, etc)
+- DO NOT use descriptive ranges or approximations
+- DO NOT use words like "typically" or "approximately"
+- Provide ONLY specific numerical measurements when visible
+- If you cannot see a measurement clearly, omit it entirely`;
 
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
-    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|Form:|$))/i);
+    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|$))/i);
     const measurements: AnalysisResult['measurements'] = {};
 
     if (measurementsMatch) {
@@ -242,17 +234,11 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
     const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
-    const feedback = feedbackMatch 
+    const feedback = feedbackMatch && Object.keys(measurements).length > 0 
       ? feedbackMatch[1].trim() 
-      : content.split('\n')
-          .filter(line => !line.toLowerCase().startsWith('measurements:') && 
-                         !line.toLowerCase().startsWith('recommendations:') && 
-                         !line.toLowerCase().startsWith('specific exercises:') &&
-                         !line.toLowerCase().startsWith('form:') &&
-                         line.trim().length > 0)
-          .join('\n').trim();
+      : 'Detailed assessment of movement form and joint angles required';
 
-    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Specific Exercises:|$))/i);
+    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Exercise 1:|$))/i);
     const recommendations = recommendationsMatch 
       ? recommendationsMatch[1]
           .split('\n')
@@ -420,13 +406,13 @@ const handler: Handler = async (event) => {
 
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: 'Analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      })
-    };
-  }
+      headers,
+      body: JSON.stringify({
+        error: 'Analysis failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    };
+  }
 };
 
 export { handler };
