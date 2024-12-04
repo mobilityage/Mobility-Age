@@ -30,6 +30,27 @@ interface AnalysisResult {
   };
 }
 
+const ATHLETE_RANGES = {
+  deepSquat: {
+    hipFlexion: { min: 110, ideal: 120 },
+    kneeFlexion: { min: 140, ideal: 150 },
+    ankleDorsiflexion: { min: 40, ideal: 45 }
+  },
+  forwardFold: {
+    hipFlexion: { min: 100, ideal: 110 },
+    hamstringFlexibility: { min: 90, ideal: 100 }
+  },
+  apleyScratch: {
+    internalRotation: { min: 80, ideal: 90 },
+    externalRotation: { min: 95, ideal: 105 },
+    fingerGap: { max: 15, ideal: 5 }
+  },
+  kneeWall: {
+    weightBearing: { min: 40, ideal: 45 },
+    distance: { min: 15, ideal: 18 }
+  }
+};
+
 const CLINICAL_RANGES = {
   deepSquat: {
     hipFlexion: { min: 95, max: 100 },
@@ -51,6 +72,18 @@ const CLINICAL_RANGES = {
   }
 };
 
+const FORM_MULTIPLIERS = {
+  poor: 2.0,
+  moderate: 1.5,
+  good: 1.0
+};
+
+const LIMITATION_FACTORS = {
+  severe: 25,
+  moderate: 15,
+  mild: 10
+};
+
 function calculateMobilityAge(
   biologicalAge: number,
   measurements: AnalysisResult['measurements'],
@@ -58,20 +91,34 @@ function calculateMobilityAge(
   isGoodForm: boolean
 ): number {
   let ageAdjustment = 0;
-  const maxAdjustment = 20;
+  const maxAdjustment = 40;
+  const formQuality = isGoodForm ? 'good' : 'poor';
+  const formMultiplier = FORM_MULTIPLIERS[formQuality];
 
   switch (poseName) {
     case 'Deep Squat':
       if (measurements?.angles) {
         const { hip, knee, ankle } = measurements.angles;
-        if (hip && hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
-          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.hipFlexion.min - hip) * 0.5);
+        
+        if (hip) {
+          if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
+            const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          }
         }
-        if (knee && knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
-          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.kneeFlexion.min - knee) * 0.5);
+
+        if (knee) {
+          if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
+            const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          }
         }
-        if (ankle && ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
-          ageAdjustment += Math.min(15, (CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min - ankle) * 0.75);
+
+        if (ankle) {
+          if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
+            const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          }
         }
       }
       break;
@@ -80,7 +127,8 @@ function calculateMobilityAge(
       if (measurements?.angles?.hip) {
         const hipFlexion = measurements.angles.hip;
         if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
-          ageAdjustment += Math.min(20, (CLINICAL_RANGES.forwardFold.hipFlexion.min - hipFlexion) * 0.6);
+          const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
         }
       }
       break;
@@ -89,7 +137,8 @@ function calculateMobilityAge(
       if (measurements?.distances?.fingerGap) {
         const gap = measurements.distances.fingerGap;
         if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
-          ageAdjustment += Math.min(20, (gap - CLINICAL_RANGES.apleyScratch.fingerGap.max) * 1.5);
+          const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
         }
       }
       break;
@@ -98,19 +147,19 @@ function calculateMobilityAge(
       if (measurements?.angles?.ankle) {
         const ankleAngle = measurements.angles.ankle;
         if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
-          ageAdjustment += Math.min(15, (CLINICAL_RANGES.kneeWall.weightBearing.min - ankleAngle) * 0.8);
+          const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
         }
       }
       break;
   }
 
   if (!isGoodForm) {
-    ageAdjustment += 5;
+    ageAdjustment += LIMITATION_FACTORS.moderate;
   }
 
   ageAdjustment = Math.min(maxAdjustment, ageAdjustment);
-  const adjustedAge = biologicalAge + ageAdjustment;
-
+  const adjustedAge = biologicalAge + (ageAdjustment * formMultiplier);
   return Math.max(18, Math.min(100, Math.round(adjustedAge)));
 }
 
@@ -209,11 +258,11 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
 const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Include precise measurements in your assessment. Your response should follow this format:
 
 Measurements:
-[List relevant angles and distances measured from the image]
+[List all relevant joint angles and distances measured from the image in degrees/cm]
 
-Form: [good/needs improvement]
+Form: [good/poor]
 
-Assessment: [3-4 sentences analyzing form]
+Assessment: [3-4 detailed sentences analyzing form quality and limitations]
 
 Recommendations:
 - [specific improvement 1]
@@ -284,7 +333,7 @@ const handler: Handler = async (event) => {
           content: [
             {
               type: "text",
-              text: `Analyze this ${poseName} pose. Include accurate measurements of joint angles and relevant distances.`
+              text: `Analyze this ${poseName} pose. Measure and report all relevant joint angles and distances precisely.`
             },
             {
               type: "image_url",
