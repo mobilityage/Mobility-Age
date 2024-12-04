@@ -412,7 +412,7 @@ const handler: Handler = async (event) => {
     console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",  // Fixed model name
+      model: "gpt-4o",  // Fixed model name
       messages: [
         {
           role: "system",
