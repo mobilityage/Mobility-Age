@@ -367,19 +367,12 @@ const handler: Handler = async (event) => {
     };
   }
 
-  // Ensure we have the body content as a string
-  if (!event.body) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing request body' })
-    };
-  }
-
   let requestBody;
   try {
-    // Parse the body once and store it
-    requestBody = JSON.parse(event.body);
+    // Handle the event body directly without intermediate storage
+    requestBody = typeof event.body === 'string' 
+      ? JSON.parse(event.body)
+      : event.body;
   } catch (error) {
     return {
       statusCode: 400,
@@ -405,14 +398,12 @@ const handler: Handler = async (event) => {
     }
 
     const openai = new OpenAI({ apiKey });
-
-    // Process the base64 image once
     const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
     console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",  // Fixed model name
+      model: "gpt-4-vision-preview",  // Fixed model name
       messages: [
         {
           role: "system",
