@@ -79,9 +79,9 @@ const FORM_MULTIPLIERS = {
 };
 
 const LIMITATION_FACTORS = {
-  severe: 25,
-  moderate: 15,
-  mild: 10
+  severe: 15,
+  moderate: 10,
+  mild: 5
 };
 
 function calculateMobilityAge(
@@ -91,7 +91,7 @@ function calculateMobilityAge(
   isGoodForm: boolean
 ): number {
   let ageAdjustment = 0;
-  const maxAdjustment = 40;
+  const maxAdjustment = 25;
   const formQuality = isGoodForm ? 'good' : 'poor';
   const formMultiplier = FORM_MULTIPLIERS[formQuality];
 
@@ -242,7 +242,9 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
     const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
-    const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Form assessment needed';
+    const feedback = feedbackMatch && Object.keys(measurements).length > 0 
+      ? feedbackMatch[1].trim() 
+      : 'Detailed assessment of movement form and joint angles required';
 
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Specific Exercises:|$))/i);
     const recommendations = recommendationsMatch 
