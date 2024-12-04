@@ -293,136 +293,146 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
 };
 
 const handler: Handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers, body: '' };
+  }
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
 
-  let requestBody;
-  try {
-    requestBody = JSON.parse(event.body || '{}');
-  } catch (error) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Invalid JSON in request body' })
-    };
-  }
+  // Store the body content immediately
+  const rawBody = event.body || '{}';
+  let requestBody;
 
-  const { photo, poseName, biologicalAge } = requestBody;
+  try {
+    requestBody = JSON.parse(rawBody);
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid JSON in request body' })
+    };
+  }
 
-  if (!photo || !poseName) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing required fields: photo or poseName' })
-    };
-  }
+  const { photo, poseName, biologicalAge } = requestBody;
 
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('API key not configured');
-    }
+  if (!photo || !poseName) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Missing required fields: photo or poseName' })
+    };
+  }
 
-    const openai = new OpenAI({ apiKey });
-    const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('API key not configured');
+    }
 
-    console.log('Starting analysis for:', poseName);
+    const openai = new OpenAI({ apiKey });
+    // Store the base64Image in a variable
+    const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 1000
-    });
+    console.log('Starting analysis for:', poseName);
 
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content received from API');
-    }
+    // Store the completion response
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000
+    });
 
-    console.log('Raw API response:', content);
+    // Store the content immediately
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content received from API');
+    }
 
-    if (content.trim().toUpperCase().startsWith('RETRY:')) {
-      return {
-        statusCode: 422,
-        headers,
-        body: JSON.stringify({
-          needsRetry: true,
-          message: content.substring(6).trim()
-        })
-      };
-    }
+    // Log the stored content
+    console.log('Raw API response:', content);
 
-    const result = parseContent(content, poseName, biologicalAge);
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(result)
-    };
+    if (content.trim().toUpperCase().startsWith('RETRY:')) {
+      return {
+        statusCode: 422,
+        headers,
+        body: JSON.stringify({
+          needsRetry: true,
+          message: content.substring(6).trim()
+        })
+      };
+    }
 
-  } catch (error) {
-    console.error('Analysis error:', error);
+    // Parse the stored content
+    const result = parseContent(content, poseName, biologicalAge);
 
-    if (error instanceof Error && (
-      error.message.toLowerCase().includes('clearer image') ||
-      error.message.toLowerCase().includes('try again') ||
-      error.message.toLowerCase().includes('unable to analyze')
-    )) {
-      return {
-        statusCode: 422,
-        headers,
-        body: JSON.stringify({
-          needsRetry: true,
-          message: "Please ensure your full body is visible and the image is clear. Try adjusting your position or lighting.",
-          detailedMessage: error.message
-        })
-      };
-    }
+    // Return the final response
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(result)
+    };
 
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: 'Analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      })
-    };
-  }
+  } catch (error) {
+    console.error('Analysis error:', error);
+
+    if (error instanceof Error && (
+      error.message.toLowerCase().includes('clearer image') ||
+      error.message.toLowerCase().includes('try again') ||
+      error.message.toLowerCase().includes('unable to analyze')
+    )) {
+      return {
+        statusCode: 422,
+        headers,
+        body: JSON.stringify({
+          needsRetry: true,
+          message: "Please ensure your full body is visible and the image is clear. Try adjusting your position or lighting.",
+          detailedMessage: error.message
+        })
+      };
+    }
+
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Analysis failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    };
+  }
 };
 
 export { handler };
