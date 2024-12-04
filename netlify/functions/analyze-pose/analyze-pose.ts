@@ -3,9 +3,6 @@ import { OpenAI } from "openai";
 
 interface AnalysisResult {
   mobilityAge: number;
-  physiotherapistEstimate: number;
-  estimateConfidence: number;
-  measurementReliability: number;
   feedback: string;
   recommendations: string[];
   isGoodForm: boolean;
@@ -87,66 +84,36 @@ const LIMITATION_FACTORS = {
   mild: 5
 };
 
-function calculateMeasurementReliability(measurements: AnalysisResult['measurements'], poseName: string): number {
-  if (!measurements) return 0;
-
-  let expectedMeasurements = 0;
-  let foundMeasurements = 0;
-
-  switch (poseName) {
-    case 'Deep Squat':
-      expectedMeasurements = 3; // hip, knee, ankle
-      foundMeasurements = Object.keys(measurements.angles || {}).length;
-      break;
-    case 'Forward Fold':
-      expectedMeasurements = 1; // hip
-      foundMeasurements = measurements.angles?.hip ? 1 : 0;
-      break;
-    case 'Apley Scratch Test':
-      expectedMeasurements = 1; // fingerGap
-      foundMeasurements = measurements.distances?.fingerGap ? 1 : 0;
-      break;
-    case 'Knee to Wall Test':
-      expectedMeasurements = 2; // ankle angle and wall distance
-      foundMeasurements = (measurements.angles?.ankle ? 1 : 0) + 
-                         (measurements.distances?.wallDistance ? 1 : 0);
-      break;
-  }
-
-  return expectedMeasurements > 0 ? foundMeasurements / expectedMeasurements : 0;
-}
-
 function calculateMobilityAge(
   biologicalAge: number,
   measurements: AnalysisResult['measurements'],
   poseName: string,
-  isGoodForm: boolean,
-  physiotherapistEstimate: number,
-  estimateConfidence: number
-): { mobilityAge: number; measurementReliability: number } {
-  let measurementBasedAge = biologicalAge;
+  isGoodForm: boolean
+): number {
   let ageAdjustment = 0;
   const maxAdjustment = 25;
   const formQuality = isGoodForm ? 'good' : 'poor';
   const formMultiplier = FORM_MULTIPLIERS[formQuality];
 
-  // Calculate measurement-based adjustments
   switch (poseName) {
     case 'Deep Squat':
       if (measurements?.angles) {
         const { hip, knee, ankle } = measurements.angles;
+
         if (hip) {
           if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
             const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
             ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
           }
         }
+
         if (knee) {
           if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
             const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
             ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
           }
         }
+
         if (ankle) {
           if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
             const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
@@ -156,7 +123,35 @@ function calculateMobilityAge(
       }
       break;
 
-    // ... [Previous cases remain the same]
+    case 'Forward Fold':
+      if (measurements?.angles?.hip) {
+        const hipFlexion = measurements.angles.hip;
+        if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
+          const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+        }
+      }
+      break;
+
+    case 'Apley Scratch Test':
+      if (measurements?.distances?.fingerGap) {
+        const gap = measurements.distances.fingerGap;
+        if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
+          const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+        }
+      }
+      break;
+
+    case 'Knee to Wall Test':
+      if (measurements?.angles?.ankle) {
+        const ankleAngle = measurements.angles.ankle;
+        if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
+          const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
+          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+        }
+      }
+      break;
   }
 
   if (!isGoodForm) {
@@ -164,26 +159,8 @@ function calculateMobilityAge(
   }
 
   ageAdjustment = Math.min(maxAdjustment, ageAdjustment);
-  measurementBasedAge = biologicalAge + (ageAdjustment * formMultiplier);
-
-  // Calculate measurement reliability
-  const measurementReliability = calculateMeasurementReliability(measurements, poseName);
-
-  // Blend measurements and physiotherapist estimate based on confidence and reliability
-  const measurementWeight = 0.4 * measurementReliability;
-  const physiotherapistWeight = 0.6 * estimateConfidence;
-  const totalWeight = measurementWeight + physiotherapistWeight;
-
-  const normalizedMeasurementWeight = measurementWeight / totalWeight;
-  const normalizedPhysiotherapistWeight = physiotherapistWeight / totalWeight;
-
-  const blendedAge = (measurementBasedAge * normalizedMeasurementWeight) + 
-                    (physiotherapistEstimate * normalizedPhysiotherapistWeight);
-
-  return {
-    mobilityAge: Math.max(18, Math.min(100, Math.round(blendedAge))),
-    measurementReliability
-  };
+  const adjustedAge = biologicalAge + (ageAdjustment * formMultiplier);
+  return Math.max(18, Math.min(100, Math.round(adjustedAge)));
 }
 
 class AnalysisError extends Error {
@@ -201,11 +178,6 @@ Measurements:
 - Distances in cm (e.g., "Finger gap: 5")
 Do not use words like "typically" or "approximately"
 Skip measurements if not clearly visible
-
-Mobility Assessment:
-Estimated Mobility Age: [number between 18-100]
-Confidence Level: [number between 0-1, e.g., 0.8]
-[1-2 sentences explaining the age estimate based on overall movement quality, compensation patterns, and visible limitations]
 
 Form: good/poor relative to age
 [One clear sentence explaining form quality]
@@ -237,44 +209,77 @@ IMPORTANT:
 
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
-    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Mobility Assessment:|$))/i);
+    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Form:|$))/i);
     const measurements: AnalysisResult['measurements'] = {};
 
     if (measurementsMatch) {
-      // ... [Previous measurement parsing remains the same]
+      const measurementText = measurementsMatch[1];
+      const angles: { [key: string]: number } = {};
+      const distances: { [key: string]: number } = {};
+
+      const angleMatches = measurementText.matchAll(/(\w+)\s+angle:\s*(\d+(?:\.\d+)?)/gi);
+      for (const match of angleMatches) {
+        angles[match[1].toLowerCase()] = parseFloat(match[2]);
+      }
+
+      const distanceMatches = measurementText.matchAll(/(\w+)\s+(?:distance|gap):\s*(\d+(?:\.\d+)?)/gi);
+      for (const match of distanceMatches) {
+        distances[match[1].toLowerCase()] = parseFloat(match[2]);
+      }
+
+      if (Object.keys(angles).length > 0) measurements.angles = angles;
+      if (Object.keys(distances).length > 0) measurements.distances = distances;
     }
-
-    // Parse physiotherapist estimate and confidence
-    const mobilityAssessmentMatch = content.match(/Estimated Mobility Age:\s*(\d+)/i);
-    const confidenceMatch = content.match(/Confidence Level:\s*(0\.\d+|1\.0|1)/i);
-
-    const physiotherapistEstimate = mobilityAssessmentMatch 
-      ? parseInt(mobilityAssessmentMatch[1])
-      : biologicalAge;
-
-    const estimateConfidence = confidenceMatch
-      ? parseFloat(confidenceMatch[1])
-      : 0.5;
 
     const formMatch = content.match(/Form:\s*(good|poor)(?:\s*\n([^\n]+))?/i);
     const isGoodForm = formMatch ? formMatch[1].toLowerCase() === 'good' : false;
 
-    const { mobilityAge, measurementReliability } = calculateMobilityAge(
-      biologicalAge,
-      measurements,
-      poseName,
-      isGoodForm,
-      physiotherapistEstimate,
-      estimateConfidence
-    );
+    const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
-    // ... [Rest of parsing remains the same]
+    const assessmentMatch = content.match(/Assessment:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
+    const feedback = assessmentMatch ? assessmentMatch[1].trim() : '';
+
+    const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Exercise 1:|$))/i);
+    const recommendations = recommendationsMatch 
+      ? recommendationsMatch[1]
+          .split('\n')
+          .map(line => line.replace(/^[-•*]\s*/, '').trim())
+          .filter(line => line.length > 0)
+      : [];
+
+    const exerciseMatches = content.matchAll(/Exercise \d+:\s*([^]*?)(?=Exercise \d+:|$)/gs);
+    const exercises = Array.from(exerciseMatches).map(match => {
+      const exerciseContent = match[1];
+      const nameMatch = exerciseContent.match(/Name:\s*([^\n]+)/i);
+      const descMatch = exerciseContent.match(/Description:\s*([^\n]+)/i);
+      const difficultyMatch = exerciseContent.match(/Difficulty:\s*(beginner|intermediate|advanced)/i);
+      const setsMatch = exerciseContent.match(/Sets:\s*(\d+)/i);
+      const repsMatch = exerciseContent.match(/Reps:\s*(\d+)/i);
+      const musclesMatch = exerciseContent.match(/Target Muscles:\s*([^\n]+)/i);
+
+      return {
+        name: nameMatch ? nameMatch[1].trim() : 'Form Practice',
+        description: descMatch ? descMatch[1].trim() : 'Practice the movement with proper form',
+        difficulty: (difficultyMatch ? difficultyMatch[1].toLowerCase() : 'beginner') as 'beginner' | 'intermediate' | 'advanced',
+        sets: setsMatch ? parseInt(setsMatch[1]) : undefined,
+        reps: repsMatch ? parseInt(repsMatch[1]) : undefined,
+        targetMuscles: musclesMatch 
+          ? musclesMatch[1].split(',').map(m => m.trim())
+          : ['full body']
+      };
+    });
+
+    if (exercises.length === 0) {
+      exercises.push({
+        name: 'Form Practice',
+        description: 'Practice the movement with proper form',
+        difficulty: 'beginner',
+        targetMuscles: ['full body']
+      });
+    }
 
     return {
       mobilityAge,
-      physiotherapistEstimate,
-      estimateConfidence,
-      measurementReliability,
       feedback,
       recommendations,
       isGoodForm,
@@ -309,27 +314,40 @@ const handler: Handler = async (event) => {
     };
   }
 
+  let requestBody;
+  try {
+    requestBody = JSON.parse(event.body || '{}');
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid JSON in request body' })
+    };
+  }
+
+  const { photo, poseName, biologicalAge } = requestBody;
+
+  if (!photo || !poseName) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Missing required fields: photo or poseName' })
+    };
+  }
+
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new AnalysisError('API key not configured');
+      throw new Error('API key not configured');
     }
 
     const openai = new OpenAI({ apiKey });
-    let { photo, poseName, biologicalAge } = JSON.parse(event.body || '{}');
-
-    if (!photo || !poseName) {
-      throw new AnalysisError('Missing required fields: photo or poseName');
-    }
-
-    if (photo.startsWith('data:image')) {
-      photo = photo.split(',')[1];
-    }
+    const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
     console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -345,7 +363,7 @@ const handler: Handler = async (event) => {
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${photo}`
+                url: `data:image/jpeg;base64,${base64Image}`
               }
             }
           ]
@@ -356,7 +374,7 @@ const handler: Handler = async (event) => {
 
     const content = completion.choices[0]?.message?.content;
     if (!content) {
-      throw new AnalysisError('No content received from API');
+      throw new Error('No content received from API');
     }
 
     console.log('Raw API response:', content);
@@ -367,14 +385,12 @@ const handler: Handler = async (event) => {
         headers,
         body: JSON.stringify({
           needsRetry: true,
-          message: content.substring(6).trim(),
-          detailedMessage: content.substring(6).trim()
+          message: content.substring(6).trim()
         })
       };
     }
 
     const result = parseContent(content, poseName, biologicalAge);
-
     return {
       statusCode: 200,
       headers,
@@ -382,7 +398,7 @@ const handler: Handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('Function error:', error);
+    console.error('Analysis error:', error);
 
     if (error instanceof Error && (
       error.message.toLowerCase().includes('clearer image') ||
