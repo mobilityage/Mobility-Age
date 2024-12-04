@@ -22,6 +22,8 @@ interface AnalysisResult {
       hip?: number;
       knee?: number;
       ankle?: number;
+      shoulder?: number;
+      elbow?: number;
     };
     distances?: {
       fingerGap?: number;
@@ -170,23 +172,25 @@ class AnalysisError extends Error {
   }
 }
 
-const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image using EXACTLY this format with NO markdown symbols or formatting:
+const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image and provide feedback in this EXACT format:
 
 Measurements:
-- Angle measurements in degrees (e.g., "Hip angle: 90")
-- Distance measurements in cm (e.g., "Finger gap: 5")
-List only specific numerical measurements that you can see. Do not use words like "typically" or "approximately".
+[List specific numerical measurements only when clearly visible]
+- Joint angles in degrees (e.g., "Shoulder angle: 180")
+- Distances in cm (e.g., "Finger gap: 5")
+Do not use words like "typically" or "approximately"
+Skip measurements if not clearly visible
 
 Form: good/poor
-[One sentence explanation]
+[One clear sentence explaining form quality]
 
 Assessment:
-[2-3 sentences about observed movement quality and limitations]
+[2-3 sentences describing observed movement patterns, limitations, and capabilities]
 
 Recommendations:
-- [Point 1]
-- [Point 2]
-- [Point 3]
+- [Specific improvement point 1]
+- [Specific improvement point 2]
+- [Specific improvement point 3]
 
 Exercise 1:
 Name: [exercise name]
@@ -194,21 +198,20 @@ Description: [1 sentence]
 Difficulty: beginner/intermediate/advanced
 Sets: [number]
 Reps: [number]
-Target Muscles: [muscle groups]
+Target Muscles: [specific muscles]
 
 Exercise 2:
 [Same format as Exercise 1]
 
 IMPORTANT:
-- DO NOT use markdown formatting (###, **, etc)
-- DO NOT use descriptive ranges or approximations
-- DO NOT use words like "typically" or "approximately"
-- Provide ONLY specific numerical measurements when visible
-- If you cannot see a measurement clearly, omit it entirely`;
+- Provide only specific numerical measurements when clearly visible
+- Skip measurements if not clearly visible
+- Do not use markdown formatting
+- Do not use approximations`;
 
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
-    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|$))/i);
+    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Form:|$))/i);
     const measurements: AnalysisResult['measurements'] = {};
 
     if (measurementsMatch) {
@@ -221,7 +224,7 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
         angles[match[1].toLowerCase()] = parseFloat(match[2]);
       }
 
-      const distanceMatches = measurementText.matchAll(/(\w+)\s+distance:\s*(\d+(?:\.\d+)?)/gi);
+      const distanceMatches = measurementText.matchAll(/(\w+)\s+(?:distance|gap):\s*(\d+(?:\.\d+)?)/gi);
       for (const match of distanceMatches) {
         distances[match[1].toLowerCase()] = parseFloat(match[2]);
       }
@@ -230,13 +233,13 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
       if (Object.keys(distances).length > 0) measurements.distances = distances;
     }
 
-    const isGoodForm = content.toLowerCase().includes('form: good');
+    const formMatch = content.match(/Form:\s*(good|poor)(?:\s*\n([^\n]+))?/i);
+    const isGoodForm = formMatch ? formMatch[1].toLowerCase() === 'good' : false;
+
     const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
-    const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
-    const feedback = feedbackMatch && Object.keys(measurements).length > 0 
-      ? feedbackMatch[1].trim() 
-      : 'Detailed assessment of movement form and joint angles required';
+    const assessmentMatch = content.match(/Assessment:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
+    const feedback = assessmentMatch ? assessmentMatch[1].trim() : '';
 
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Exercise 1:|$))/i);
     const recommendations = recommendationsMatch 
@@ -244,7 +247,7 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
           .split('\n')
           .map(line => line.replace(/^[-•*]\s*/, '').trim())
           .filter(line => line.length > 0)
-      : ['Practice proper form'];
+      : [];
 
     const exerciseMatches = content.matchAll(/Exercise \d+:\s*([^]*?)(?=Exercise \d+:|$)/gs);
     const exercises = Array.from(exerciseMatches).map(match => {
@@ -344,7 +347,7 @@ const handler: Handler = async (event) => {
           content: [
             {
               type: "text",
-              text: `Analyze this ${poseName} pose. Measure and report all relevant joint angles and distances precisely.`
+              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
             },
             {
               type: "image_url",
@@ -413,6 +416,3 @@ const handler: Handler = async (event) => {
       })
     };
   }
-};
-
-export { handler };
