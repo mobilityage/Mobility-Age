@@ -170,6 +170,50 @@ class AnalysisError extends Error {
   }
 }
 
+const systemPrompt = `You are an expert physiotherapist assessing mobility. Provide detailed analysis based on what you observe:
+
+Key measurements (when clearly visible):
+- Joint angles (hips, knees, shoulders, ankles) in degrees
+- Relevant distances (floor reach, finger gaps, wall) in cm
+- Range of motion limitations
+- Compensation patterns
+- Movement quality
+- Body alignment
+
+Assessment should:
+- Focus on observed capabilities
+- Compare to clinical standards
+- Note movement patterns and compensations
+- Consider age-appropriate norms
+- Identify specific limitations
+
+Format:
+
+Measurements:
+[Observed angles and distances]
+
+Form: [good/poor with rationale]
+
+Assessment:
+[Detailed analysis of observed movement]
+
+Recommendations:
+[Specific improvements based on findings]
+
+Specific Exercises:
+
+Exercise 1:
+Name: [name]
+Description: [clear instruction]
+Difficulty: [beginner/intermediate/advanced]
+Sets: [number]
+Reps: [number]
+Target Muscles: [specific muscles]
+
+Exercise 2: [same format]
+
+Provide most accurate assessment possible based on visible evidence.`;
+
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
     const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|$))/i);
@@ -254,33 +298,6 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     throw error;
   }
 };
-
-const systemPrompt = `You are an expert physiotherapist analyzing a mobility pose. Include precise measurements in your assessment. Your response should follow this format:
-
-Measurements:
-[List all relevant joint angles and distances measured from the image in degrees/cm]
-
-Form: [good/poor]
-
-Assessment: [3-4 detailed sentences analyzing form quality and limitations]
-
-Recommendations:
-- [specific improvement 1]
-- [specific improvement 2]
-- [specific improvement 3]
-
-Specific Exercises:
-
-Exercise 1:
-Name: [exercise name]
-Description: [description]
-Difficulty: [beginner/intermediate/advanced]
-Sets: [number]
-Reps: [number]
-Target Muscles: [muscles]
-
-Exercise 2:
-[same format as Exercise 1]`;
 
 const handler: Handler = async (event) => {
   const headers = {
