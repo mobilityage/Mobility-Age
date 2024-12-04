@@ -73,16 +73,54 @@ const CLINICAL_RANGES = {
 };
 
 const FORM_MULTIPLIERS = {
-  poor: 3.0,
-  moderate: 1.5,
-  good: 1.0
+  excellent: 0.7,
+  good: 1.0,
+  moderate: 1.3,
+  poor: 1.8
+};
+
+const PERFORMANCE_ADJUSTMENTS = {
+  exceptional: -10,
+  aboveAverage: -5,
+  average: 0,
+  belowAverage: 5,
+  poor: 10
 };
 
 const LIMITATION_FACTORS = {
-  severe: 20,
-  moderate: 10,
-  mild: 5
+  severe: 15,
+  moderate: 8,
+  mild: 3
 };
+
+const determinePerformanceLevel = (
+  measurements: AnalysisResult['measurements'],
+  poseName: string,
+  isGoodForm: boolean
+): string => {
+  let score = 0;
+
+  if (measurements?.angles) {
+    Object.entries(measurements.angles).forEach(([joint, angle]) => {
+      const idealRange = ATHLETE_RANGES[poseName]?.[`${joint}Flexion`]?.ideal;
+      if (idealRange && angle) {
+        const difference = Math.abs(angle - idealRange);
+        if (difference < 5) score += 2;
+        else if (difference < 10) score += 1;
+        else if (difference > 20) score -= 1;
+      }
+    });
+  }
+
+  if (isGoodForm) score += 2;
+
+  if (score >= 4) return 'exceptional';
+  if (score >= 2) return 'aboveAverage';
+  if (score >= 0) return 'average';
+  if (score >= -2) return 'belowAverage';
+  return 'poor';
+};
+
 function calculateMobilityAge(
   biologicalAge: number,
   measurements: AnalysisResult['measurements'],
@@ -90,9 +128,10 @@ function calculateMobilityAge(
   isGoodForm: boolean
 ): number {
   let ageAdjustment = 0;
-  const maxAdjustment = 25;
-  const formQuality = isGoodForm ? 'good' : 'poor';
-  const formMultiplier = FORM_MULTIPLIERS[formQuality];
+  const maxAdjustment = 20;
+
+  const performanceLevel = determinePerformanceLevel(measurements, poseName, isGoodForm);
+  ageAdjustment += PERFORMANCE_ADJUSTMENTS[performanceLevel];
 
   switch (poseName) {
     case 'Deep Squat':
@@ -100,34 +139,43 @@ function calculateMobilityAge(
         const { hip, knee, ankle } = measurements.angles;
 
         if (hip) {
-          if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
+          if (hip > ATHLETE_RANGES.deepSquat.hipFlexion.ideal) {
+            ageAdjustment -= 3;
+          } else if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
             const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+            ageAdjustment += LIMITATION_FACTORS[severity];
           }
         }
 
         if (knee) {
-          if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
+          if (knee > ATHLETE_RANGES.deepSquat.kneeFlexion.ideal) {
+            ageAdjustment -= 2;
+          } else if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
             const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+            ageAdjustment += LIMITATION_FACTORS[severity];
           }
         }
 
         if (ankle) {
-          if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
+          if (ankle > ATHLETE_RANGES.deepSquat.ankleDorsiflexion.ideal) {
+            ageAdjustment -= 2;
+          } else if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
             const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+            ageAdjustment += LIMITATION_FACTORS[severity];
           }
         }
       }
       break;
 
+    // Similar modifications for other poses...
     case 'Forward Fold':
       if (measurements?.angles?.hip) {
         const hipFlexion = measurements.angles.hip;
-        if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
+        if (hipFlexion > ATHLETE_RANGES.forwardFold.hipFlexion.ideal) {
+          ageAdjustment -= 3;
+        } else if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
           const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          ageAdjustment += LIMITATION_FACTORS[severity];
         }
       }
       break;
@@ -135,9 +183,11 @@ function calculateMobilityAge(
     case 'Apley Scratch Test':
       if (measurements?.distances?.fingerGap) {
         const gap = measurements.distances.fingerGap;
-        if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
+        if (gap < ATHLETE_RANGES.apleyScratch.fingerGap.ideal) {
+          ageAdjustment -= 3;
+        } else if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
           const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          ageAdjustment += LIMITATION_FACTORS[severity];
         }
       }
       break;
@@ -145,66 +195,29 @@ function calculateMobilityAge(
     case 'Knee to Wall Test':
       if (measurements?.angles?.ankle) {
         const ankleAngle = measurements.angles.ankle;
-        if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
+        if (ankleAngle > ATHLETE_RANGES.kneeWall.weightBearing.ideal) {
+          ageAdjustment -= 3;
+        } else if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
           const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity] * formMultiplier;
+          ageAdjustment += LIMITATION_FACTORS[severity];
         }
       }
       break;
   }
 
-  if (!isGoodForm) {
-    ageAdjustment += LIMITATION_FACTORS.moderate;
-  }
+  const formQuality = isGoodForm ? 'good' : 'moderate';
+  const formMultiplier = FORM_MULTIPLIERS[formQuality];
 
-  ageAdjustment = Math.min(maxAdjustment, ageAdjustment);
+  ageAdjustment = Math.min(maxAdjustment, Math.max(-maxAdjustment, ageAdjustment));
   const adjustedAge = biologicalAge + (ageAdjustment * formMultiplier);
-  return Math.max(18, Math.min(100, Math.round(adjustedAge)));
+
+  return Math.max(
+    biologicalAge - 15,
+    Math.min(biologicalAge + 20,
+    Math.round(adjustedAge))
+  );
 }
 
-class AnalysisError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AnalysisError';
-  }
-}
-
-const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image and provide feedback in this EXACT format:
-
-Measurements:
-[List specific numerical measurements only when clearly visible]
-- Joint angles in degrees (e.g., "Shoulder angle: 180")
-- Distances in cm (e.g., "Finger gap: 5")
-Do not use words like "typically" or "approximately"
-Skip measurements if not clearly visible
-
-Form: good/poor relative to age
-[One clear sentence explaining form quality]
-
-Assessment:
-[2-3 sentences describing observed movement patterns, limitations, and capabilities]
-
-Recommendations:
-- [Specific improvement point 1]
-- [Specific improvement point 2]
-- [Specific improvement point 3]
-
-Exercise 1:
-Name: [exercise name]
-Description: [1 sentence]
-Difficulty: beginner/intermediate/advanced
-Sets: [number]
-Reps: [number]
-Target Muscles: [specific muscles]
-
-Exercise 2:
-[Same format as Exercise 1]
-
-IMPORTANT:
-- Provide only specific numerical measurements when clearly visible
-- Skip measurements if not clearly visible
-- Do not use markdown formatting
-- Do not use approximations`;
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
     const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Form:|$))/i);
@@ -293,146 +306,139 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
 };
 
 const handler: Handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers, body: '' };
+  }
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
 
-  // Store the body content immediately
-  const rawBody = event.body || '{}';
-  let requestBody;
+  const rawBody = event.body || '{}';
+  let requestBody;
 
-  try {
-    requestBody = JSON.parse(rawBody);
-  } catch (error) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Invalid JSON in request body' })
-    };
-  }
+  try {
+    requestBody = JSON.parse(rawBody);
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid JSON in request body' })
+    };
+  }
 
-  const { photo, poseName, biologicalAge } = requestBody;
+  const { photo, poseName, biologicalAge } = requestBody;
 
-  if (!photo || !poseName) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing required fields: photo or poseName' })
-    };
-  }
+  if (!photo || !poseName) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Missing required fields: photo or poseName' })
+    };
+  }
 
-  try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('API key not configured');
-    }
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('API key not configured');
+    }
 
-    const openai = new OpenAI({ apiKey });
-    // Store the base64Image in a variable
-    const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
+    const openai = new OpenAI({ apiKey });
+    const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
-    console.log('Starting analysis for:', poseName);
+    console.log('Starting analysis for:', poseName);
 
-    // Store the completion response
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 1000
-    });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000
+    });
 
-    // Store the content immediately
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content received from API');
-    }
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content received from API');
+    }
 
-    // Log the stored content
-    console.log('Raw API response:', content);
+    console.log('Raw API response:', content);
 
-    if (content.trim().toUpperCase().startsWith('RETRY:')) {
-      return {
-        statusCode: 422,
-        headers,
-        body: JSON.stringify({
-          needsRetry: true,
-          message: content.substring(6).trim()
-        })
-      };
-    }
+    if (content.trim().toUpperCase().startsWith('RETRY:')) {
+      return {
+        statusCode: 422,
+        headers,
+        body: JSON.stringify({
+          needsRetry: true,
+          message: content.substring(6).trim()
+        })
+      };
+    }
 
-    // Parse the stored content
-    const result = parseContent(content, poseName, biologicalAge);
+    const result = parseContent(content, poseName, biologicalAge);
 
-    // Return the final response
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(result)
-    };
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(result)
+    };
 
-  } catch (error) {
-    console.error('Analysis error:', error);
+  } catch (error) {
+    console.error('Analysis error:', error);
 
-    if (error instanceof Error && (
-      error.message.toLowerCase().includes('clearer image') ||
-      error.message.toLowerCase().includes('try again') ||
-      error.message.toLowerCase().includes('unable to analyze')
-    )) {
-      return {
-        statusCode: 422,
-        headers,
-        body: JSON.stringify({
-          needsRetry: true,
-          message: "Please ensure your full body is visible and the image is clear. Try adjusting your position or lighting.",
-          detailedMessage: error.message
-        })
-      };
-    }
+    if (error instanceof Error && (
+      error.message.toLowerCase().includes('clearer image') ||
+      error.message.toLowerCase().includes('try again') ||
+      error.message.toLowerCase().includes('unable to analyze')
+    )) {
+      return {
+        statusCode: 422,
+        headers,
+        body: JSON.stringify({
+          needsRetry: true,
+          message: "Please ensure your full body is visible and the image is clear. Try adjusting your position or lighting.",
+          detailedMessage: error.message
+        })
+      };
+    }
 
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: 'Analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      })
-    };
-  }
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: 'Analysis failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    };
+  }
 };
 
 export { handler };
