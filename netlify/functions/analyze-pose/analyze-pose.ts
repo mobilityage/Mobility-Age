@@ -367,12 +367,19 @@ const handler: Handler = async (event) => {
     };
   }
 
-  // Store the body content immediately
-  const rawBody = event.body || '{}';
-  let requestBody;
+  // Ensure we have the body content as a string
+  if (!event.body) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Missing request body' })
+    };
+  }
 
+  let requestBody;
   try {
-    requestBody = JSON.parse(rawBody);
+    // Parse the body once and store it
+    requestBody = JSON.parse(event.body);
   } catch (error) {
     return {
       statusCode: 400,
@@ -398,14 +405,14 @@ const handler: Handler = async (event) => {
     }
 
     const openai = new OpenAI({ apiKey });
-    // Store the base64Image in a variable
+
+    // Process the base64 image once
     const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
     console.log('Starting analysis for:', poseName);
 
-    // Store the completion response
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4-vision-preview",  // Fixed model name
       messages: [
         {
           role: "system",
@@ -430,13 +437,11 @@ const handler: Handler = async (event) => {
       max_tokens: 1000
     });
 
-    // Store the content immediately
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No content received from API');
     }
 
-    // Log the stored content
     console.log('Raw API response:', content);
 
     if (content.trim().toUpperCase().startsWith('RETRY:')) {
@@ -450,10 +455,8 @@ const handler: Handler = async (event) => {
       };
     }
 
-    // Parse the stored content
     const result = parseContent(content, poseName, biologicalAge);
 
-    // Return the final response
     return {
       statusCode: 200,
       headers,
