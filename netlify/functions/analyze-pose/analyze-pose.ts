@@ -72,157 +72,128 @@ const CLINICAL_RANGES = {
   }
 };
 
-// New constants for improved mobility age calculation
 const FORM_MULTIPLIERS = {
-  poor: 2.0,
+  poor: 3.0,
   moderate: 1.5,
   good: 1.0
 };
 
 const LIMITATION_FACTORS = {
-  severe: 15,
-  moderate: 8,
-  mild: 4
+  severe: 20,
+  moderate: 10,
+  mild: 5
 };
 
-const PERFORMANCE_ADJUSTMENTS = {
-  excellent: -5,
-  good: -2,
-  average: 0,
-  belowAverage: 4,
-  poor: 8
-};
-
-function determinePerformanceLevel(
-  measurements: AnalysisResult['measurements'],
-  poseName: string,
-  isGoodForm: boolean
-): keyof typeof PERFORMANCE_ADJUSTMENTS {
-  if (!measurements || !isGoodForm) return 'belowAverage';
-
-  let performanceScore = 0;
-
-  switch (poseName) {
-    case 'Deep Squat':
-      if (measurements.angles?.hip && measurements.angles?.knee && measurements.angles?.ankle) {
-        if (measurements.angles.hip >= ATHLETE_RANGES.deepSquat.hipFlexion.ideal) performanceScore += 2;
-        if (measurements.angles.knee >= ATHLETE_RANGES.deepSquat.kneeFlexion.ideal) performanceScore += 2;
-        if (measurements.angles.ankle >= ATHLETE_RANGES.deepSquat.ankleDorsiflexion.ideal) performanceScore += 1;
-      }
-      break;
-
-    // Add similar cases for other poses
-  }
-
-  if (performanceScore >= 4) return 'excellent';
-  if (performanceScore >= 3) return 'good';
-  if (performanceScore >= 2) return 'average';
-  if (performanceScore >= 1) return 'belowAverage';
-  return 'poor';
-}
-
-function calculateMobilityAge(
+const calculateHybridMobilityAge = (
   biologicalAge: number,
   measurements: AnalysisResult['measurements'],
+  assessment: string,
   poseName: string,
   isGoodForm: boolean
-): number {
+): number => {
   let ageAdjustment = 0;
-  const maxAdjustment = 20;
+  const maxAdjustment = 25;
+  let useAngularMeasurements = false;
 
-  const performanceLevel = determinePerformanceLevel(measurements, poseName, isGoodForm);
-  ageAdjustment += PERFORMANCE_ADJUSTMENTS[performanceLevel];
-
-  switch (poseName) {
-    case 'Deep Squat':
-      if (measurements?.angles) {
-        const { hip, knee, ankle } = measurements.angles;
-
-        if (hip) {
-          if (hip > ATHLETE_RANGES.deepSquat.hipFlexion.ideal) {
-            ageAdjustment -= 3;
-          } else if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
-            const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
-          }
-        }
-
-        if (knee) {
-          if (knee > ATHLETE_RANGES.deepSquat.kneeFlexion.ideal) {
-            ageAdjustment -= 2;
-          } else if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
-            const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
-          }
-        }
-
-        if (ankle) {
-          if (ankle > ATHLETE_RANGES.deepSquat.ankleDorsiflexion.ideal) {
-            ageAdjustment -= 2;
-          } else if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
-            const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
-          }
-        }
-      }
-      break;
-
-    case 'Forward Fold':
-      if (measurements?.angles?.hip) {
-        const hipFlexion = measurements.angles.hip;
-        if (hipFlexion > ATHLETE_RANGES.forwardFold.hipFlexion.ideal) {
-          ageAdjustment -= 3;
-        } else if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
-          const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity];
-        }
-      }
-      break;
-
-    case 'Apley Scratch Test':
-      if (measurements?.distances?.fingerGap) {
-        const gap = measurements.distances.fingerGap;
-        if (gap < ATHLETE_RANGES.apleyScratch.fingerGap.ideal) {
-          ageAdjustment -= 3;
-        } else if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
-          const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity];
-        }
-      }
-      break;
-
-    case 'Knee to Wall Test':
-      if (measurements?.angles?.ankle) {
-        const ankleAngle = measurements.angles.ankle;
-        if (ankleAngle > ATHLETE_RANGES.kneeWall.weightBearing.ideal) {
-          ageAdjustment -= 3;
-        } else if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
-          const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
-          ageAdjustment += LIMITATION_FACTORS[severity];
-        }
-      }
-      break;
+  // Check if we have valid measurements for this pose
+  if (measurements?.angles) {
+    switch (poseName) {
+      case 'Deep Squat':
+        useAngularMeasurements = !!(measurements.angles.hip || measurements.angles.knee || measurements.angles.ankle);
+        break;
+      case 'Forward Fold':
+        useAngularMeasurements = !!measurements.angles.hip;
+        break;
+      case 'Apley Scratch Test':
+        useAngularMeasurements = !!(measurements.distances?.fingerGap);
+        break;
+      case 'Knee to Wall Test':
+        useAngularMeasurements = !!measurements.angles.ankle;
+        break;
+    }
   }
 
-  const formQuality = isGoodForm ? 'good' : 'moderate';
-  const formMultiplier = FORM_MULTIPLIERS[formQuality];
+  if (useAngularMeasurements) {
+    switch (poseName) {
+      case 'Deep Squat':
+        if (measurements?.angles) {
+          const { hip, knee, ankle } = measurements.angles;
+          if (hip) {
+            if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
+              const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
+              ageAdjustment += LIMITATION_FACTORS[severity];
+            }
+          }
+          if (knee) {
+            if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
+              const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
+              ageAdjustment += LIMITATION_FACTORS[severity];
+            }
+          }
+          if (ankle) {
+            if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
+              const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
+              ageAdjustment += LIMITATION_FACTORS[severity];
+            }
+          }
+        }
+        break;
+      case 'Forward Fold':
+        if (measurements?.angles?.hip) {
+          const hipFlexion = measurements.angles.hip;
+          if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
+            const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity];
+          }
+        }
+        break;
+      case 'Apley Scratch Test':
+        if (measurements?.distances?.fingerGap) {
+          const gap = measurements.distances.fingerGap;
+          if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
+            const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity];
+          }
+        }
+        break;
+      case 'Knee to Wall Test':
+        if (measurements?.angles?.ankle) {
+          const ankleAngle = measurements.angles.ankle;
+          if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
+            const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
+            ageAdjustment += LIMITATION_FACTORS[severity];
+          }
+        }
+        break;
+    }
+  } else {
+    const limitationIndicators = [
+      { pattern: /limited|restricted|difficulty|stiff/i, weight: 5 },
+      { pattern: /severe|significant|major|substantial/i, weight: 8 },
+      { pattern: /mild|slight|minor/i, weight: 3 },
+      { pattern: /imbalance|asymmetry/i, weight: 4 },
+      { pattern: /compensation|compensating/i, weight: 6 },
+      { pattern: /excellent|perfect|ideal/i, weight: -5 },
+      { pattern: /good|proper|well/i, weight: -3 }
+    ];
 
-  ageAdjustment = Math.min(maxAdjustment, Math.max(-maxAdjustment, ageAdjustment));
-  const adjustedAge = biologicalAge + (ageAdjustment * formMultiplier);
-
-  return Math.max(
-    biologicalAge - 15,
-    Math.min(biologicalAge + 20,
-    Math.round(adjustedAge))
-  );
-}
-class AnalysisError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'AnalysisError';
+    for (const indicator of limitationIndicators) {
+      if (indicator.pattern.test(assessment)) {
+        ageAdjustment += indicator.weight;
+      }
+    }
   }
-}
 
+  if (!isGoodForm) {
+    ageAdjustment += LIMITATION_FACTORS.moderate;
+  }
+
+  const ageFactor = Math.max(1, (biologicalAge - 20) / 30);
+  ageAdjustment *= ageFactor;
+  
+  ageAdjustment = Math.min(maxAdjustment, Math.max(-10, ageAdjustment));
+  return Math.max(18, Math.min(100, Math.round(biologicalAge + ageAdjustment)));
+};
 const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image and provide feedback in this EXACT format:
 
 Measurements:
@@ -287,8 +258,6 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     const formMatch = content.match(/Form:\s*(good|poor)(?:\s*\n([^\n]+))?/i);
     const isGoodForm = formMatch ? formMatch[1].toLowerCase() === 'good' : false;
 
-    const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
-
     const assessmentMatch = content.match(/Assessment:\s*([^]*?)(?=\n\s*(?:Recommendations:|$))/i);
     const feedback = assessmentMatch ? assessmentMatch[1].trim() : '';
 
@@ -332,7 +301,7 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     }
 
     return {
-      mobilityAge,
+      mobilityAge: calculateHybridMobilityAge(biologicalAge, measurements, feedback, poseName, isGoodForm),
       feedback,
       recommendations,
       isGoodForm,
@@ -367,19 +336,9 @@ const handler: Handler = async (event) => {
     };
   }
 
-  // Ensure we have the body content as a string
-  if (!event.body) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing request body' })
-    };
-  }
-
   let requestBody;
   try {
-    // Parse the body once and store it
-    requestBody = JSON.parse(event.body);
+    requestBody = JSON.parse(event.body || '{}');
   } catch (error) {
     return {
       statusCode: 400,
@@ -398,21 +357,23 @@ const handler: Handler = async (event) => {
     };
   }
 
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'API key not configured' })
+    };
+  }
+
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('API key not configured');
-    }
-
     const openai = new OpenAI({ apiKey });
-
-    // Process the base64 image once
     const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
     console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",  // Fixed model name
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -423,7 +384,7 @@ const handler: Handler = async (event) => {
           content: [
             {
               type: "text",
-              text: `Analyze this ${poseName} pose. Provide specific measurements only when clearly visible.`
+              text: `Analyze this ${poseName} pose. Focus on overall form quality and movement patterns.`
             },
             {
               type: "image_url",
