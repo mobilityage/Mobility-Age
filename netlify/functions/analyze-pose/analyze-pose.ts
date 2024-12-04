@@ -181,7 +181,7 @@ Measurements:
 Do not use words like "typically" or "approximately"
 Skip measurements if not clearly visible
 
-Form: good/poor
+Form: good/poor relative to age
 [One clear sentence explaining form quality]
 
 Assessment:
