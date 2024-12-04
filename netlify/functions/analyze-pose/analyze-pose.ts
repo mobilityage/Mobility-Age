@@ -73,13 +73,13 @@ const CLINICAL_RANGES = {
 };
 
 const FORM_MULTIPLIERS = {
-  poor: 2.0,
+  poor: 3.0,
   moderate: 1.5,
   good: 1.0
 };
 
 const LIMITATION_FACTORS = {
-  severe: 15,
+  severe: 20,
   moderate: 10,
   mild: 5
 };
