@@ -72,54 +72,54 @@ const CLINICAL_RANGES = {
   }
 };
 
+// New constants for improved mobility age calculation
 const FORM_MULTIPLIERS = {
-  excellent: 0.7,
-  good: 1.0,
-  moderate: 1.3,
-  poor: 1.8
-};
-
-const PERFORMANCE_ADJUSTMENTS = {
-  exceptional: -10,
-  aboveAverage: -5,
-  average: 0,
-  belowAverage: 5,
-  poor: 10
+  poor: 2.0,
+  moderate: 1.5,
+  good: 1.0
 };
 
 const LIMITATION_FACTORS = {
   severe: 15,
   moderate: 8,
-  mild: 3
+  mild: 4
 };
 
-const determinePerformanceLevel = (
+const PERFORMANCE_ADJUSTMENTS = {
+  excellent: -5,
+  good: -2,
+  average: 0,
+  belowAverage: 4,
+  poor: 8
+};
+
+function determinePerformanceLevel(
   measurements: AnalysisResult['measurements'],
   poseName: string,
   isGoodForm: boolean
-): string => {
-  let score = 0;
+): keyof typeof PERFORMANCE_ADJUSTMENTS {
+  if (!measurements || !isGoodForm) return 'belowAverage';
 
-  if (measurements?.angles) {
-    Object.entries(measurements.angles).forEach(([joint, angle]) => {
-      const idealRange = ATHLETE_RANGES[poseName]?.[`${joint}Flexion`]?.ideal;
-      if (idealRange && angle) {
-        const difference = Math.abs(angle - idealRange);
-        if (difference < 5) score += 2;
-        else if (difference < 10) score += 1;
-        else if (difference > 20) score -= 1;
+  let performanceScore = 0;
+
+  switch (poseName) {
+    case 'Deep Squat':
+      if (measurements.angles?.hip && measurements.angles?.knee && measurements.angles?.ankle) {
+        if (measurements.angles.hip >= ATHLETE_RANGES.deepSquat.hipFlexion.ideal) performanceScore += 2;
+        if (measurements.angles.knee >= ATHLETE_RANGES.deepSquat.kneeFlexion.ideal) performanceScore += 2;
+        if (measurements.angles.ankle >= ATHLETE_RANGES.deepSquat.ankleDorsiflexion.ideal) performanceScore += 1;
       }
-    });
+      break;
+
+    // Add similar cases for other poses
   }
 
-  if (isGoodForm) score += 2;
-
-  if (score >= 4) return 'exceptional';
-  if (score >= 2) return 'aboveAverage';
-  if (score >= 0) return 'average';
-  if (score >= -2) return 'belowAverage';
+  if (performanceScore >= 4) return 'excellent';
+  if (performanceScore >= 3) return 'good';
+  if (performanceScore >= 2) return 'average';
+  if (performanceScore >= 1) return 'belowAverage';
   return 'poor';
-};
+}
 
 function calculateMobilityAge(
   biologicalAge: number,
@@ -167,7 +167,6 @@ function calculateMobilityAge(
       }
       break;
 
-    // Similar modifications for other poses...
     case 'Forward Fold':
       if (measurements?.angles?.hip) {
         const hipFlexion = measurements.angles.hip;
@@ -217,6 +216,49 @@ function calculateMobilityAge(
     Math.round(adjustedAge))
   );
 }
+class AnalysisError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AnalysisError';
+  }
+}
+
+const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image and provide feedback in this EXACT format:
+
+Measurements:
+[List specific numerical measurements only when clearly visible]
+- Joint angles in degrees (e.g., "Shoulder angle: 180")
+- Distances in cm (e.g., "Finger gap: 5")
+Do not use words like "typically" or "approximately"
+Skip measurements if not clearly visible
+
+Form: good/poor relative to age
+[One clear sentence explaining form quality]
+
+Assessment:
+[2-3 sentences describing observed movement patterns, limitations, and capabilities]
+
+Recommendations:
+- [Specific improvement point 1]
+- [Specific improvement point 2]
+- [Specific improvement point 3]
+
+Exercise 1:
+Name: [exercise name]
+Description: [1 sentence]
+Difficulty: beginner/intermediate/advanced
+Sets: [number]
+Reps: [number]
+Target Muscles: [specific muscles]
+
+Exercise 2:
+[Same format as Exercise 1]
+
+IMPORTANT:
+- Provide only specific numerical measurements when clearly visible
+- Skip measurements if not clearly visible
+- Do not use markdown formatting
+- Do not use approximations`;
 
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
@@ -325,6 +367,7 @@ const handler: Handler = async (event) => {
     };
   }
 
+  // Store the body content immediately
   const rawBody = event.body || '{}';
   let requestBody;
 
@@ -355,12 +398,14 @@ const handler: Handler = async (event) => {
     }
 
     const openai = new OpenAI({ apiKey });
+    // Store the base64Image in a variable
     const base64Image = photo.startsWith('data:image') ? photo.split(',')[1] : photo;
 
     console.log('Starting analysis for:', poseName);
 
+    // Store the completion response
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
@@ -385,11 +430,13 @@ const handler: Handler = async (event) => {
       max_tokens: 1000
     });
 
+    // Store the content immediately
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No content received from API');
     }
 
+    // Log the stored content
     console.log('Raw API response:', content);
 
     if (content.trim().toUpperCase().startsWith('RETRY:')) {
@@ -403,8 +450,10 @@ const handler: Handler = async (event) => {
       };
     }
 
+    // Parse the stored content
     const result = parseContent(content, poseName, biologicalAge);
 
+    // Return the final response
     return {
       statusCode: 200,
       headers,
