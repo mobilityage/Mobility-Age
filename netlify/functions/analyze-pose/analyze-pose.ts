@@ -83,7 +83,6 @@ const LIMITATION_FACTORS = {
   moderate: 10,
   mild: 5
 };
-
 function calculateMobilityAge(
   biologicalAge: number,
   measurements: AnalysisResult['measurements'],
@@ -206,7 +205,6 @@ IMPORTANT:
 - Skip measurements if not clearly visible
 - Do not use markdown formatting
 - Do not use approximations`;
-
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
     const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Form:|$))/i);
@@ -347,7 +345,7 @@ const handler: Handler = async (event) => {
     console.log('Starting analysis for:', poseName);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
