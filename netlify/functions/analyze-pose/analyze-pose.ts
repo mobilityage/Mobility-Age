@@ -99,7 +99,7 @@ function calculateMobilityAge(
     case 'Deep Squat':
       if (measurements?.angles) {
         const { hip, knee, ankle } = measurements.angles;
-        
+
         if (hip) {
           if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
             const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
@@ -216,9 +216,9 @@ Provide most accurate assessment possible based on visible evidence.`;
 
 const parseContent = (content: string, poseName: string, biologicalAge: number): AnalysisResult => {
   try {
-    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|$))/i);
+    const measurementsMatch = content.match(/Measurements:\s*([^]*?)(?=\n\s*(?:Assessment:|Feedback:|Form:|$))/i);
     const measurements: AnalysisResult['measurements'] = {};
-    
+
     if (measurementsMatch) {
       const measurementText = measurementsMatch[1];
       const angles: { [key: string]: number } = {};
@@ -242,9 +242,15 @@ const parseContent = (content: string, poseName: string, biologicalAge: number):
     const mobilityAge = calculateMobilityAge(biologicalAge, measurements, poseName, isGoodForm);
 
     const feedbackMatch = content.match(/(?:Assessment|Feedback):\s*([^]*?)(?=\n\s*(?:Recommendations:|Specific Exercises:|$))/i);
-    const feedback = feedbackMatch && Object.keys(measurements).length > 0 
+    const feedback = feedbackMatch 
       ? feedbackMatch[1].trim() 
-      : 'Detailed assessment of movement form and joint angles required';
+      : content.split('\n')
+          .filter(line => !line.toLowerCase().startsWith('measurements:') && 
+                         !line.toLowerCase().startsWith('recommendations:') && 
+                         !line.toLowerCase().startsWith('specific exercises:') &&
+                         !line.toLowerCase().startsWith('form:') &&
+                         line.trim().length > 0)
+          .join('\n').trim();
 
     const recommendationsMatch = content.match(/Recommendations:\s*([^]*?)(?=\n\s*(?:Specific Exercises:|$))/i);
     const recommendations = recommendationsMatch 
@@ -395,7 +401,7 @@ const handler: Handler = async (event) => {
 
   } catch (error) {
     console.error('Function error:', error);
-    
+
     if (error instanceof Error && (
       error.message.toLowerCase().includes('clearer image') ||
       error.message.toLowerCase().includes('try again') ||
@@ -414,13 +420,13 @@ const handler: Handler = async (event) => {
 
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: 'Analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      })
-    };
-  }
+      headers,
+      body: JSON.stringify({
+        error: 'Analysis failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    };
+  }
 };
 
 export { handler };
