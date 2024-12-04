@@ -92,7 +92,8 @@ const calculateHybridMobilityAge = (
   isGoodForm: boolean
 ): number => {
   let ageAdjustment = 0;
-  const maxAdjustment = 25;
+  const maxPositiveAdjustment = 25;
+  const maxNegativeAdjustment = -15; // Allow for better than biological age
   let useAngularMeasurements = false;
 
   // Check if we have valid measurements for this pose
@@ -118,50 +119,74 @@ const calculateHybridMobilityAge = (
       case 'Deep Squat':
         if (measurements?.angles) {
           const { hip, knee, ankle } = measurements.angles;
+          let squatScore = 0;
+          
           if (hip) {
-            if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
-              const severity = hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 'severe' : 'moderate';
-              ageAdjustment += LIMITATION_FACTORS[severity];
+            if (hip >= ATHLETE_RANGES.deepSquat.hipFlexion.ideal) {
+              squatScore -= 5; // Better than ideal
+            } else if (hip >= ATHLETE_RANGES.deepSquat.hipFlexion.min) {
+              squatScore -= 2; // Meeting athletic standards
+            } else if (hip < CLINICAL_RANGES.deepSquat.hipFlexion.min) {
+              squatScore += hip < ATHLETE_RANGES.deepSquat.hipFlexion.min ? 8 : 4;
             }
           }
+          
           if (knee) {
-            if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
-              const severity = knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 'severe' : 'moderate';
-              ageAdjustment += LIMITATION_FACTORS[severity];
+            if (knee >= ATHLETE_RANGES.deepSquat.kneeFlexion.ideal) {
+              squatScore -= 5;
+            } else if (knee >= ATHLETE_RANGES.deepSquat.kneeFlexion.min) {
+              squatScore -= 2;
+            } else if (knee < CLINICAL_RANGES.deepSquat.kneeFlexion.min) {
+              squatScore += knee < ATHLETE_RANGES.deepSquat.kneeFlexion.min ? 8 : 4;
             }
           }
+          
           if (ankle) {
-            if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
-              const severity = ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 'severe' : 'moderate';
-              ageAdjustment += LIMITATION_FACTORS[severity];
+            if (ankle >= ATHLETE_RANGES.deepSquat.ankleDorsiflexion.ideal) {
+              squatScore -= 5;
+            } else if (ankle >= ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min) {
+              squatScore -= 2;
+            } else if (ankle < CLINICAL_RANGES.deepSquat.ankleDorsiflexion.min) {
+              squatScore += ankle < ATHLETE_RANGES.deepSquat.ankleDorsiflexion.min ? 8 : 4;
             }
           }
+          
+          ageAdjustment = squatScore;
         }
         break;
       case 'Forward Fold':
         if (measurements?.angles?.hip) {
           const hipFlexion = measurements.angles.hip;
-          if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
-            const severity = hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
+          if (hipFlexion >= ATHLETE_RANGES.forwardFold.hipFlexion.ideal) {
+            ageAdjustment -= 10;
+          } else if (hipFlexion >= ATHLETE_RANGES.forwardFold.hipFlexion.min) {
+            ageAdjustment -= 5;
+          } else if (hipFlexion < CLINICAL_RANGES.forwardFold.hipFlexion.min) {
+            ageAdjustment += hipFlexion < ATHLETE_RANGES.forwardFold.hipFlexion.min ? 15 : 8;
           }
         }
         break;
       case 'Apley Scratch Test':
         if (measurements?.distances?.fingerGap) {
           const gap = measurements.distances.fingerGap;
-          if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
-            const severity = gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
+          if (gap <= ATHLETE_RANGES.apleyScratch.fingerGap.ideal) {
+            ageAdjustment -= 10;
+          } else if (gap <= ATHLETE_RANGES.apleyScratch.fingerGap.max) {
+            ageAdjustment -= 5;
+          } else if (gap > CLINICAL_RANGES.apleyScratch.fingerGap.max) {
+            ageAdjustment += gap > ATHLETE_RANGES.apleyScratch.fingerGap.max + 10 ? 15 : 8;
           }
         }
         break;
       case 'Knee to Wall Test':
         if (measurements?.angles?.ankle) {
           const ankleAngle = measurements.angles.ankle;
-          if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
-            const severity = ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 'severe' : 'moderate';
-            ageAdjustment += LIMITATION_FACTORS[severity];
+          if (ankleAngle >= ATHLETE_RANGES.kneeWall.weightBearing.ideal) {
+            ageAdjustment -= 10;
+          } else if (ankleAngle >= ATHLETE_RANGES.kneeWall.weightBearing.min) {
+            ageAdjustment -= 5;
+          } else if (ankleAngle < CLINICAL_RANGES.kneeWall.weightBearing.min) {
+            ageAdjustment += ankleAngle < ATHLETE_RANGES.kneeWall.weightBearing.min ? 15 : 8;
           }
         }
         break;
@@ -173,8 +198,10 @@ const calculateHybridMobilityAge = (
       { pattern: /mild|slight|minor/i, weight: 3 },
       { pattern: /imbalance|asymmetry/i, weight: 4 },
       { pattern: /compensation|compensating/i, weight: 6 },
-      { pattern: /excellent|perfect|ideal/i, weight: -5 },
-      { pattern: /good|proper|well/i, weight: -3 }
+      { pattern: /excellent|perfect|ideal/i, weight: -8 },
+      { pattern: /good|proper|well/i, weight: -5 },
+      { pattern: /above average|exceptional/i, weight: -6 },
+      { pattern: /flexible|fluid|smooth/i, weight: -4 }
     ];
 
     for (const indicator of limitationIndicators) {
@@ -184,16 +211,23 @@ const calculateHybridMobilityAge = (
     }
   }
 
-  if (!isGoodForm) {
-    ageAdjustment += LIMITATION_FACTORS.moderate;
+  // Form quality adjustment with potential for improvement
+  if (isGoodForm) {
+    ageAdjustment -= 5;
+  } else {
+    ageAdjustment += 8;
   }
 
-  const ageFactor = Math.max(1, (biologicalAge - 20) / 30);
+  // Apply age-based scaling
+  const ageFactor = Math.max(0.8, (biologicalAge - 20) / 30);
   ageAdjustment *= ageFactor;
+
+  // Ensure adjustment stays within bounds
+  ageAdjustment = Math.min(maxPositiveAdjustment, Math.max(maxNegativeAdjustment, ageAdjustment));
   
-  ageAdjustment = Math.min(maxAdjustment, Math.max(-10, ageAdjustment));
-  return Math.max(18, Math.min(100, Math.round(biologicalAge + ageAdjustment)));
+  return Math.max(18, Math.round(biologicalAge + ageAdjustment));
 };
+
 const systemPrompt = `You are an expert physiotherapist assessing mobility. Analyze the image and provide feedback in this EXACT format:
 
 Measurements:
